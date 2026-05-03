@@ -190,13 +190,19 @@ export async function getWidgetData(dashboardId: string, dataSource: string, pro
     try {
       // Execute Python script from the Hermes environment
       const { stdout } = await execFileAsync(HERMES_PYTHON, [fullScriptPath], {
-        timeout: 10000,
-        env: { ...process.env, PYTHONIOENCODING: "utf-8" }
+        timeout: 60000,
+        env: { ...process.env, PYTHONIOENCODING: "utf-8" },
+        cwd: join(hermesHome, "nujin"),
       });
       return JSON.parse(stdout);
-    } catch (err) {
-      console.error(`Error executing widget script ${dataSource}:`, err);
-      return { error: "Script execution failed", details: err.message };
+    } catch (err: any) {
+      const stderr = err.stderr?.toString?.() || "";
+      const stdout = err.stdout?.toString?.() || "";
+      const code = err.code ?? err.status ?? "?";
+      console.error(`[WidgetData] Script failed: ${fullScriptPath}\n  exit=${code} signal=${err.signal}\n  stderr: ${stderr}\n  stdout: ${stdout.slice(0, 200)}`);
+      // Show the most useful part: stderr if available, otherwise the generic message
+      const detail = stderr.trim() || err.message || "Unknown error";
+      return { error: "Script execution failed", details: detail.slice(0, 300) };
     }
   }
 
