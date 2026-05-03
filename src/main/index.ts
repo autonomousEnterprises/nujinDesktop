@@ -112,6 +112,7 @@ import {
   saveDashboard,
   getWidgetData,
   watchDashboards,
+  initNujinWorkspace,
 } from "./dashboards";
 import { getAppLocale, setAppLocale } from "./locale";
 
@@ -880,6 +881,13 @@ app.whenReady().then(() => {
   setupIPC();
   createWindow();
   setupUpdater();
+  
+  // Initialize Nujin Dashboard Architecture directories
+  try {
+    initNujinWorkspace();
+  } catch (err) {
+    console.error("[MAIN] Failed to initialize Nujin workspace:", err);
+  }
 
   app.on("activate", () => {
     if (BrowserWindow.getAllWindows().length === 0) createWindow();

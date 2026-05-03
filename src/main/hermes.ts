@@ -596,9 +596,24 @@ export async function sendMessage(
 ): Promise<ChatHandle> {
   ensureInitialized();
 
+  let finalMessage = message;
+
+  // Inject Nujin Instructions if in dashboard context
+  if (message.includes("[CONTEXT: Dashboard")) {
+    try {
+      const instructionPath = join(HERMES_HOME, "nujin", "INSTRUCTION.md");
+      if (existsSync(instructionPath)) {
+        const instructions = readFileSync(instructionPath, "utf-8");
+        finalMessage = `${message}\n\n### DASHBOARD PROTOCOL:\n${instructions}`;
+      }
+    } catch (err) {
+      console.error("[HERMES] Failed to inject dashboard instructions:", err);
+    }
+  }
+
   // Remote mode: always use API, no CLI fallback
   if (isRemoteMode()) {
-    return sendMessageViaApi(message, cb, profile, resumeSessionId);
+    return sendMessageViaApi(finalMessage, cb, profile, resumeSessionId);
   }
 
   // Check API server availability (cache the result, re-check periodically)
@@ -607,11 +622,11 @@ export async function sendMessage(
   }
 
   if (apiServerAvailable) {
-    return sendMessageViaApi(message, cb, profile, resumeSessionId, history);
+    return sendMessageViaApi(finalMessage, cb, profile, resumeSessionId, history);
   }
 
   // Fallback to CLI
-  return sendMessageViaCli(message, cb, profile, resumeSessionId);
+  return sendMessageViaCli(finalMessage, cb, profile, resumeSessionId);
 }
 
 // Lazy init — called on first sendMessage or gateway start

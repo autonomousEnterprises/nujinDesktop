@@ -83,13 +83,20 @@ export default function WidgetRenderer({ widget, dashboardId, profile, onDataFet
 
   const fetchData = async () => {
     try {
+      setLoading(true);
       const result = await window.hermesAPI.dashboards.getWidgetData(dashboardId, widget.dataSource, profile);
-      if (result) {
+      
+      if (result && result.error) {
+        setData({ error: result.error, details: result.details });
+      } else if (result) {
         setData(result);
         onDataFetched?.(result);
+      } else {
+        setData(null);
       }
     } catch (e) {
       console.error("Failed to fetch widget data", e);
+      setData({ error: "Connection Error", details: "Failed to reach backend bridge" });
     } finally {
       setLoading(false);
     }
@@ -116,10 +123,20 @@ export default function WidgetRenderer({ widget, dashboardId, profile, onDataFet
     );
   }
 
+  if (data?.error) {
+    return (
+      <div className="h-full min-h-[120px] w-full bg-rose-500/5 border border-rose-500/20 rounded-[28px] p-6 flex flex-col items-center justify-center text-center shadow-sm backdrop-blur-sm">
+        <AlertCircle size={24} className="text-rose-500 mb-3 opacity-80" />
+        <Text className="text-rose-500 font-black text-xs uppercase tracking-widest">{data.error}</Text>
+        <Text className="text-[10px] font-bold opacity-60 mt-1 line-clamp-2 max-w-[200px]">{data.details}</Text>
+      </div>
+    );
+  }
+
   if (!data) {
     return (
-      <div className="h-full w-full bg-secondary border border-border rounded-[24px] p-6 flex items-center justify-center shadow-sm">
-        <Text className="text-muted-foreground italic">Missing data: {widget.title}</Text>
+      <div className="h-full min-h-[120px] w-full bg-secondary/50 border border-border/50 rounded-[28px] p-6 flex items-center justify-center shadow-sm">
+        <Text className="text-muted-foreground italic text-xs font-bold opacity-40 uppercase tracking-tighter">Missing data: {widget.title}</Text>
       </div>
     );
   }
