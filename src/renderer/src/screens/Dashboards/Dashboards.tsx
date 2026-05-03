@@ -26,14 +26,10 @@ export default function Dashboards({ profile }: DashboardsProps) {
     return list;
   }, [profile]);
 
-  // Load dashboards on mount
+  // Load dashboards on mount but do NOT auto-select, leaving a blank configurator
   useEffect(() => {
-    loadDashboardList().then((list) => {
-      if (list.length > 0 && !currentDashboard) {
-        window.hermesAPI.dashboards.get(list[0], profile).then(setCurrentDashboard);
-      }
-    });
-  }, [profile, loadDashboardList]);
+    loadDashboardList();
+  }, [loadDashboardList]);
 
   // Sync chat when dashboard changes
   useEffect(() => {
@@ -57,13 +53,46 @@ export default function Dashboards({ profile }: DashboardsProps) {
     const config = await window.hermesAPI.dashboards.get(id, profile);
     if (config) {
       setCurrentDashboard(config);
+      
+      // If the dashboard has a saved session and we don't have it loaded in memory, fetch it
+      if (config.sessionId && !dashboardChats[config.id]) {
+        try {
+          const dbMessages = await window.hermesAPI.getSessionMessages(config.sessionId);
+          const chatMessages: ChatMessage[] = dbMessages.map((m) => ({
+            id: `db-${m.id}`,
+            role: m.role === "user" ? "user" : "agent",
+            content: m.content,
+          }));
+          setDashboardChats(prev => ({ ...prev, [config.id]: chatMessages }));
+          setDashboardSessions(prev => ({ ...prev, [config.id]: config.sessionId! }));
+          setMessages(chatMessages);
+          setCurrentSessionId(config.sessionId);
+        } catch (err) {
+          console.error("Failed to fetch session messages for dashboard", err);
+        }
+      }
     }
   };
 
-  // Listen for updates from Hermes background scripts
+  // Listen for updates from Hermes background scripts or new dashboard creations
   useEffect(() => {
     const cleanup = window.hermesAPI.dashboards.onUpdate((filename) => {
-      loadDashboardList();
+      loadDashboardList().then(list => {
+        // If we are in the blank state and a new dashboard appears, auto-select it!
+        if (!currentDashboard && list.length > 0) {
+          const newId = filename.replace(".json", "");
+          window.hermesAPI.dashboards.get(newId, profile).then(config => {
+            // Bind the active session to the newly created dashboard
+            if (config && currentSessionId && !config.sessionId) {
+              const updated = { ...config, sessionId: currentSessionId };
+              window.hermesAPI.dashboards.save(newId, updated, profile);
+              switchDashboard(newId);
+            } else {
+              switchDashboard(newId);
+            }
+          });
+        }
+      });
       if (currentDashboard && filename.startsWith(currentDashboard.id)) {
         window.hermesAPI.dashboards.get(currentDashboard.id, profile).then(setCurrentDashboard);
       }
@@ -74,6 +103,7 @@ export default function Dashboards({ profile }: DashboardsProps) {
   const handleNewChat = useCallback(() => {
     setMessages([]);
     setCurrentSessionId(null);
+    setCurrentDashboard(null);
   }, []);
 
   return (
@@ -87,7 +117,16 @@ export default function Dashboards({ profile }: DashboardsProps) {
           compact={!!currentDashboard}
           dashboardContext={currentDashboard || undefined}
           sessionId={currentSessionId}
-          onSessionStarted={(sid) => setCurrentSessionId(sid)}
+          onSessionStarted={(sid) => {
+            setCurrentSessionId(sid);
+            if (currentDashboard) {
+              const updated = { ...currentDashboard, sessionId: sid };
+              setCurrentDashboard(updated);
+              window.hermesAPI.dashboards.save(updated.id, updated, profile);
+            }
+          }}
+          dashboardList={dashboardList}
+          onSwitchDashboard={switchDashboard}
         />
       </aside>
 
@@ -105,20 +144,6 @@ export default function Dashboards({ profile }: DashboardsProps) {
         <main className="dashboard-content">
           <header className="dashboard-header">
             <div className="flex items-center gap-4">
-              <div className="relative group">
-                <select 
-                  className="appearance-none bg-secondary/50 border border-border rounded-xl px-4 py-2 pr-10 text-sm font-bold cursor-pointer hover:bg-secondary transition-colors"
-                  value={currentDashboard.id}
-                  onChange={(e) => switchDashboard(e.target.value)}
-                >
-                  {dashboardList.map(id => (
-                    <option key={id} value={id}>{id.split('_').map(w => w.charAt(0).toUpperCase() + w.slice(1)).join(' ')}</option>
-                  ))}
-                </select>
-                <div className="absolute right-3 top-1/2 -translate-y-1/2 pointer-events-none opacity-50">
-                   <ChevronRight size={14} className="rotate-90" />
-                </div>
-              </div>
               <h1 className="text-xl font-black tracking-tight">{currentDashboard.title}</h1>
             </div>
             

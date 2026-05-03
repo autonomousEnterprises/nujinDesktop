@@ -208,6 +208,8 @@ interface ChatProps {
   onNewChat?: () => void;
   compact?: boolean;
   dashboardContext?: DashboardConfig;
+  dashboardList?: string[];
+  onSwitchDashboard?: (id: string) => void;
 }
 
 function Chat({
@@ -219,6 +221,8 @@ function Chat({
   onNewChat,
   compact,
   dashboardContext,
+  dashboardList,
+  onSwitchDashboard,
 }: ChatProps): React.JSX.Element {
   const { t } = useI18n();
   const [input, setInput] = useState("");
@@ -895,11 +899,24 @@ function Chat({
       <div className="chat-header">
         <div className="chat-header-left">
           <div className="chat-header-title">
-            {dashboardContext ? (
+            {dashboardContext && dashboardList && onSwitchDashboard ? (
               <div className="flex items-center gap-2">
                 <span className="text-primary font-black">CONFIGURATOR</span>
                 <span className="opacity-40">/</span>
-                <span className="truncate max-w-[120px]">{dashboardContext.title}</span>
+                <div className="relative group">
+                  <select 
+                    className="appearance-none bg-transparent border-none pr-6 text-sm font-bold cursor-pointer hover:bg-secondary/50 rounded-lg py-1 px-2 transition-colors focus:outline-none focus:ring-0 truncate max-w-[200px]"
+                    value={dashboardContext.id}
+                    onChange={(e) => onSwitchDashboard(e.target.value)}
+                  >
+                    {dashboardList.map(id => (
+                      <option key={id} value={id}>{id.split('_').map(w => w.charAt(0).toUpperCase() + w.slice(1)).join(' ')}</option>
+                    ))}
+                  </select>
+                  <div className="absolute right-1 top-1/2 -translate-y-1/2 pointer-events-none opacity-50">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="m6 9 6 6 6-6"/></svg>
+                  </div>
+                </div>
               </div>
             ) : sessionId ? (
               t("chat.sessionTitle", { id: sessionId.slice(-6) })

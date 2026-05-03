@@ -24,6 +24,7 @@ export interface WidgetConfig {
 export interface DashboardConfig {
   id: string;
   title: string;
+  sessionId?: string;
   widgets: WidgetConfig[];
   layout?: any;
 }
