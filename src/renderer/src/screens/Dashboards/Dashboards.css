@@ -5,6 +5,7 @@
   width: 100%;
   overflow: hidden;
   background: var(--bg-primary);
+  position: relative;
 }
 
 .chat-sidebar {
@@ -36,11 +37,10 @@
 
 .sidebar-toggle {
   position: absolute;
-  right: -12px;
   top: 50%;
   transform: translateY(-50%);
-  width: 28px;
-  height: 28px;
+  width: 32px;
+  height: 32px;
   background: var(--bg-elevated);
   border: 1px solid var(--border);
   border-radius: 50%;
@@ -48,17 +48,31 @@
   align-items: center;
   justify-content: center;
   cursor: pointer;
-  z-index: 100;
-  font-size: 14px;
+  z-index: 1000;
   color: var(--text-secondary);
-  box-shadow: 0 4px 12px rgba(0,0,0,0.1);
-  transition: all 0.2s;
+  box-shadow: 0 4px 16px rgba(0,0,0,0.2);
+  transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.sidebar-toggle.open {
+  left: 404px; /* Sidebar width (420px) - button radius (16px) */
+}
+
+.sidebar-toggle.closed {
+  left: 20px;
 }
 
 .sidebar-toggle:hover {
   background: var(--accent);
   color: white;
   transform: translateY(-50%) scale(1.1);
+  box-shadow: 0 6px 20px rgba(0,0,0,0.25);
+}
+
+.refresh-btn {
+  display: flex;
+  align-items: center;
+  gap: 8px;
 }
 
 .dashboard-content {

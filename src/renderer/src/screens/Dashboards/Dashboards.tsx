@@ -1,4 +1,5 @@
 import { useState, useEffect, useCallback } from "react";
+import { ChevronLeft, ChevronRight, RefreshCw } from "lucide-react";
 import Chat, { ChatMessage } from "../Chat/Chat";
 import DashboardGrid from "../../components/Dashboards/DashboardGrid";
 import { DashboardConfig } from "../../../../main/dashboards";
@@ -52,22 +53,25 @@ export default function Dashboards({ profile }: DashboardsProps) {
           onNewChat={handleNewChat}
           compact={!!currentDashboard}
         />
-        {currentDashboard && (
-          <button 
-            className="sidebar-toggle" 
-            onClick={() => setIsSidebarOpen(!isSidebarOpen)}
-          >
-            {isSidebarOpen ? "←" : "→"}
-          </button>
-        )}
       </aside>
+
+      {currentDashboard && (
+        <button 
+          className={`sidebar-toggle ${isSidebarOpen ? "open" : "closed"}`} 
+          onClick={() => setIsSidebarOpen(!isSidebarOpen)}
+          title={isSidebarOpen ? "Hide Chat" : "Show Chat"}
+        >
+          {isSidebarOpen ? <ChevronLeft size={16} /> : <ChevronRight size={16} />}
+        </button>
+      )}
       
       {currentDashboard && (
         <main className="dashboard-content">
           <header className="dashboard-header">
             <h1>{currentDashboard.title}</h1>
             <div className="dashboard-actions">
-              <button onClick={() => window.hermesAPI.dashboards.get(currentDashboard.id, profile).then(setCurrentDashboard)}>
+              <button className="refresh-btn" onClick={() => window.hermesAPI.dashboards.get(currentDashboard.id, profile).then(setCurrentDashboard)}>
+                <RefreshCw size={14} className="mr-2" />
                 Refresh
               </button>
             </div>

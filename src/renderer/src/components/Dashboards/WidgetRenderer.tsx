@@ -126,7 +126,8 @@ export default function WidgetRenderer({ widget, dashboardId, profile }: WidgetR
   };
 
   const WidgetIcon = widget.config?.icon ? ICON_MAP[widget.config.icon] : null;
-  const widgetType = widget.type.toLowerCase();
+  const widgetType = (widget.type || "").toLowerCase().trim();
+  console.log(`[WidgetRenderer] Rendering ${widget.id} (${widgetType})`);
 
   // Metric Rendering
   if (widgetType === "metric") {
@@ -161,35 +162,36 @@ export default function WidgetRenderer({ widget, dashboardId, profile }: WidgetR
               </Text>
             )}
           </Flex>
-          {/* data.sparkline usage removed temporarily to fix boot crash */}
+          {/* Sparklines disabled due to missing SparkArea component in this Tremor version */}
         </div>
       </CardWrapper>
     );
   }
 
   // Chart Rendering
-  if (widgetType === "area_chart" || widgetType === "line_chart") {
-    const ChartComponent = widgetType === "area_chart" ? AreaChart : LineChart;
+  if (widgetType === "area_chart" || widgetType === "line_chart" || widgetType === "chart") {
+    const ChartComponent = (widgetType === "area_chart" || widgetType === "chart") ? AreaChart : LineChart;
     return (
       <CardWrapper>
-        <div className="mb-6">
+        <div className="mb-4">
           <Title className="text-xl font-black tracking-tight">{widget.title}</Title>
           {widget.description && <Subtitle className="text-xs opacity-60 mt-1 font-medium">{widget.description}</Subtitle>}
         </div>
-        <div className="flex-1 mt-auto">
+        <div className="flex-1 min-h-0">
           <ChartComponent
-            className="h-full min-h-[140px]"
+            className="h-full w-full"
             data={data.series || []}
             index={widget.config?.index || "date"}
             categories={widget.config?.categories || ["value"]}
             colors={widget.config?.colors || [widget.color || "blue"]}
             valueFormatter={widget.config?.valueFormatter}
-            showLegend={widget.gridSize !== "small"}
-            showXAxis={widget.gridSize !== "small"}
+            showLegend={widget.gridSize !== "small" && widget.gridSize !== "medium"}
+            showXAxis={true}
             showYAxis={widget.gridSize !== "small"}
             showGridLines={false}
             curveType="monotone"
             showAnimation={true}
+            yAxisWidth={48}
           />
         </div>
       </CardWrapper>
@@ -197,13 +199,13 @@ export default function WidgetRenderer({ widget, dashboardId, profile }: WidgetR
   }
 
   // Donut Rendering
-  if (widgetType === "donut_chart") {
+  if (widgetType === "donut_chart" || widgetType === "donut") {
     return (
       <CardWrapper>
         <Title className="text-xl font-black mb-2 tracking-tight">{widget.title}</Title>
-        <div className="flex-1 flex items-center justify-center p-2">
+        <div className="flex-1 flex items-center justify-center p-2 min-h-0">
           <DonutChart
-            className="h-full w-full max-h-[160px]"
+            className="h-full w-full max-h-[180px]"
             data={data.series || []}
             category={widget.config?.category || "value"}
             index={widget.config?.index || "name"}
@@ -211,6 +213,7 @@ export default function WidgetRenderer({ widget, dashboardId, profile }: WidgetR
             showAnimation={true}
             variant="donut"
             valueFormatter={widget.config?.valueFormatter}
+            showLabel={false}
           />
         </div>
         {widget.gridSize !== "small" && (
@@ -228,7 +231,7 @@ export default function WidgetRenderer({ widget, dashboardId, profile }: WidgetR
   }
 
   // Progress Rendering
-  if (widgetType === "progress") {
+  if (widgetType === "progress" || widgetType === "gauge") {
     return (
       <CardWrapper>
         <Flex alignItems="start" justifyContent="between">
