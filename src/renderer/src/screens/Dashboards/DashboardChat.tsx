@@ -54,6 +54,13 @@ CRITICAL CONFIG FIELDS:
 - seriesPath: Dot-notation path to array of data points for charts. Example: "seriesPath":"history"
 - columns: Array of column key names for tables. Example: ["pid","name","cpu_percent"]
 
+VALUE FORMATTING (in widget config):
+- format: "currency" | "percent" | "compact" | "number" | "bytes" | "duration" | "auto" (default "auto")
+- currency: ISO 4217 code like "USD", "EUR", "GBP", or crypto: "BTC", "ETH" (default "USD")
+- precision: number of decimal places
+- prefix/suffix: custom string before/after the value
+- For tables, formatting is auto-detected from column names (price→currency, bytes→bytes, pct→percent). Override with columnFormats: {"col_name": {format, currency, precision}}
+
 LAYOUT OPTIONS:
 - gridSize: small, medium, large, wide, tall, full
 - variant: solid, glass, gradient, outline

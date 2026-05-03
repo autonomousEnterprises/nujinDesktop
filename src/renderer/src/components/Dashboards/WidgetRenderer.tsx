@@ -32,6 +32,7 @@ import {
   AlertCircle
 } from "lucide-react";
 import { WidgetConfig } from "../../../../main/dashboards";
+import { formatValue, formatCellValue, createChartFormatter, FormatOptions } from "./formatUtils";
 
 interface WidgetRendererProps {
   widget: WidgetConfig;
@@ -52,8 +53,8 @@ const ICON_MAP: Record<string, any> = {
   error: AlertCircle,
 };
 
-const renderTableCell = (header: string, value: any) => {
-  if (value === undefined || value === null) return "-";
+const renderTableCell = (header: string, value: any, widgetConfig?: any) => {
+  if (value === undefined || value === null) return "—";
   
   const h = header.toLowerCase();
   if (h === "status") {
@@ -66,12 +67,14 @@ const renderTableCell = (header: string, value: any) => {
     );
   }
 
-  if (typeof value === "string" && (value.startsWith("$") || h.includes("price") || h.includes("value") || h.includes("purchases"))) {
-    return <span className="font-bold text-slate-900 dark:text-white">{value}</span>;
+  if (typeof value === "number") {
+    const formatted = formatCellValue(header, value, widgetConfig);
+    const isHighlight = h.includes("price") || h.includes("value") || h.includes("cost");
+    return <span className={isHighlight ? "font-bold text-slate-900 dark:text-white" : ""}>{formatted}</span>;
   }
 
-  if (typeof value === "number") {
-    return value.toLocaleString();
+  if (typeof value === "string" && (value.startsWith("$") || h.includes("price"))) {
+    return <span className="font-bold text-slate-900 dark:text-white">{value}</span>;
   }
 
   return value;
@@ -252,7 +255,13 @@ export default function WidgetRenderer({ widget, dashboardId, profile, onDataFet
               {widget.title}
             </Text>
             <Metric className={`text-4xl font-black tracking-tight leading-none pt-2`}>
-              {data.value}
+              {formatValue(data.value, {
+                format: widget.config?.format || "auto",
+                currency: widget.config?.currency,
+                precision: widget.config?.precision,
+                prefix: widget.config?.prefix,
+                suffix: widget.config?.suffix,
+              })}
             </Metric>
           </div>
           {WidgetIcon && (
@@ -349,7 +358,7 @@ export default function WidgetRenderer({ widget, dashboardId, profile, onDataFet
         <Flex alignItems="start" justifyContent="between">
            <div className="space-y-1">
               <Text className="text-[10px] font-black uppercase tracking-widest opacity-60">{widget.title}</Text>
-              <Metric className="text-3xl font-black tracking-tighter">{data.value}%</Metric>
+              <Metric className="text-3xl font-black tracking-tighter">{formatValue(data.value, { format: "percent" })}</Metric>
            </div>
            <ProgressCircle 
               value={data.value} 
@@ -392,7 +401,7 @@ export default function WidgetRenderer({ widget, dashboardId, profile, onDataFet
                   <TableRow key={idx} className="hover:bg-slate-50/50 dark:hover:bg-slate-800/50 border-b border-slate-100 dark:border-slate-800/50">
                     {(data.headers || widget.config?.columns || []).map((header: string) => (
                       <TableCell key={header} className="py-2.5 text-[11px] text-slate-600 dark:text-slate-300">
-                        {renderTableCell(header, row[header.toLowerCase()] || row[header])}
+                        {renderTableCell(header, row[header.toLowerCase()] || row[header], widget.config)}
                       </TableCell>
                     ))}
                   </TableRow>
