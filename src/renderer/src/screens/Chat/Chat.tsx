@@ -204,9 +204,10 @@ interface ChatProps {
   setMessages: React.Dispatch<React.SetStateAction<ChatMessage[]>>;
   sessionId: string | null;
   profile?: string;
-  onSessionStarted?: () => void;
+  onSessionStarted?: (sid: string) => void;
   onNewChat?: () => void;
   compact?: boolean;
+  dashboardContext?: DashboardConfig;
 }
 
 function Chat({
@@ -217,11 +218,12 @@ function Chat({
   onSessionStarted,
   onNewChat,
   compact,
+  dashboardContext,
 }: ChatProps): React.JSX.Element {
   const { t } = useI18n();
   const [input, setInput] = useState("");
   const [isLoading, setIsLoading] = useState(false);
-  const [hermesSessionId, setHermesSessionId] = useState<string | null>(null);
+  const [hermesSessionId, setHermesSessionId] = useState<string | null>(sessionId);
   const [toolProgress, setToolProgress] = useState<string | null>(null);
   const [usage, setUsage] = useState<{
     promptTokens: number;
@@ -235,6 +237,11 @@ function Chat({
   const inputRef = useRef<HTMLTextAreaElement>(null);
   const isLoadingRef = useRef(false);
   const userScrolledUpRef = useRef(false);
+
+  // Sync internal sessionId with prop
+  useEffect(() => {
+    setHermesSessionId(sessionId);
+  }, [sessionId]);
 
   // Model picker state
   const [currentModel, setCurrentModel] = useState("");
@@ -411,8 +418,11 @@ function Chat({
       });
     });
 
-    const cleanupDone = window.hermesAPI.onChatDone((sessionId) => {
-      if (sessionId) setHermesSessionId(sessionId);
+    const cleanupDone = window.hermesAPI.onChatDone((sid) => {
+      if (sid) {
+        setHermesSessionId(sid);
+        if (onSessionStarted) onSessionStarted(sid);
+      }
       setToolProgress(null);
       setIsLoading(false);
     });
@@ -525,9 +535,18 @@ function Chat({
     ]);
     onSessionStarted?.();
 
+    // Inject dashboard context if present
+    let finalMessage = text;
+    if (dashboardContext) {
+      finalMessage = `[CONTEXT: Dashboard "${dashboardContext.title}" (File: ${dashboardContext.id}.json)]\n` +
+                    `Current Config: ${JSON.stringify(dashboardContext)}\n\n` +
+                    `User Request: ${text}\n\n` +
+                    `INSTRUCTION: You are in Dashboard Configurator mode. To add/modify widgets, use your tools to update the JSON file at 'nujin/dashboards/${dashboardContext.id}.json'.`;
+    }
+
     try {
       await window.hermesAPI.sendMessage(
-        text,
+        finalMessage,
         profile,
         hermesSessionId || undefined,
         messages.map((m) => ({ role: m.role, content: m.content })),
@@ -876,9 +895,17 @@ function Chat({
       <div className="chat-header">
         <div className="chat-header-left">
           <div className="chat-header-title">
-            {sessionId
-              ? t("chat.sessionTitle", { id: sessionId.slice(-6) })
-              : t("chat.title")}
+            {dashboardContext ? (
+              <div className="flex items-center gap-2">
+                <span className="text-primary font-black">CONFIGURATOR</span>
+                <span className="opacity-40">/</span>
+                <span className="truncate max-w-[120px]">{dashboardContext.title}</span>
+              </div>
+            ) : sessionId ? (
+              t("chat.sessionTitle", { id: sessionId.slice(-6) })
+            ) : (
+              t("chat.title")
+            )}
           </div>
           {usage && (
             <span
