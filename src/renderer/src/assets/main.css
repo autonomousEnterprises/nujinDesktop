@@ -129,22 +129,33 @@
     "SF Mono", "Fira Code", "JetBrains Mono", Menlo, Consolas, monospace;
 }
 
-/* ----- Body ----- */
+html,
 body {
-  font-family: var(--font-sans);
+  height: 100%;
+  margin: 0;
+  padding: 0;
+  overflow: hidden;
   background: var(--bg-primary);
+  font-family: var(--font-sans);
   color: var(--text-primary);
   transition:
     background-color 0.2s ease,
     color 0.2s ease;
 }
 
+#root {
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+}
+
 /* ----- App Shell ----- */
 .app {
-  height: 97vh;
+  height: 100%;
   display: flex;
   flex-direction: column;
   background: var(--bg-primary);
+  overflow: hidden;
 }
 
 .drag-region {
@@ -799,18 +810,19 @@ body {
 .layout {
   display: flex;
   flex: 1;
+  height: 100%;
   overflow: hidden;
 }
 
 .sidebar {
   width: 230px;
+  height: 100%;
   background: var(--bg-secondary);
   border-right: none;
   display: flex;
   flex-direction: column;
   flex-shrink: 0;
-
-  border-radius: 16px;
+  border-radius: 0; /* Remove radius to ensure it fills the side correctly */
 }
 
 .sidebar-brand {
@@ -818,8 +830,8 @@ body {
   align-items: center;
   justify-content: center;
   gap: 10px;
-  padding: 20px 10px;
-  margin-top: 25px;
+  padding: 15px 10px;
+  margin-top: 10px;
 }
 
 .sidebar-brand-icon {
@@ -847,6 +859,7 @@ body {
   display: flex;
   flex-direction: column;
   gap: 2px;
+  overflow-y: auto;
 }
 
 .sidebar-nav-item {
@@ -951,6 +964,7 @@ body {
 
 .content {
   flex: 1;
+  height: 100%;
   overflow: hidden;
   display: flex;
   flex-direction: column;
@@ -963,6 +977,7 @@ body {
   display: flex;
   flex-direction: column;
   height: 100%;
+  flex: 1;
 }
 
 .chat-header {
@@ -4680,6 +4695,27 @@ body {
     transform: scale(1) translateY(0);
     filter: blur(0);
   }
+}
+
+/* Animated Gradient Background */
+.splash-animate-gradient {
+  background-size: 300% 300%;
+  animation: splashGradientShift 8s ease infinite;
+}
+
+@keyframes splashGradientShift {
+  0% { background-position: 0% 50% }
+  50% { background-position: 100% 50% }
+  100% { background-position: 0% 50% }
+}
+
+.splash-accent-1 {
+  background: linear-gradient(to right, rgba(0, 106, 205, 0.3), rgba(124, 58, 237, 0.3), rgba(244, 63, 94, 0.3));
+}
+
+.splash-accent-2 {
+  background: linear-gradient(to right, rgba(244, 63, 94, 0.2), rgba(124, 58, 237, 0.2), rgba(0, 106, 205, 0.2));
+  animation-delay: 2s;
 }
 
 /* ========================================================================

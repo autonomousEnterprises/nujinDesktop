@@ -18,7 +18,6 @@ import {
   Flex,
   ProgressBar,
   ProgressCircle,
-  SparkArea,
 } from "@tremor/react";
 import { 
   TrendingUp, 
@@ -162,15 +161,7 @@ export default function WidgetRenderer({ widget, dashboardId, profile }: WidgetR
               </Text>
             )}
           </Flex>
-          {data.sparkline && (
-             <SparkArea
-              data={data.sparkline}
-              categories={["value"]}
-              index={"date"}
-              colors={[widget.color || "blue"]}
-              className="h-12 mt-5 -mx-2 opacity-40 group-hover:opacity-80 transition-opacity"
-            />
-          )}
+          {/* data.sparkline usage removed temporarily to fix boot crash */}
         </div>
       </CardWrapper>
     );
