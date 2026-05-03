@@ -539,14 +539,8 @@ function Chat({
     ]);
     onSessionStarted?.();
 
-    // Inject dashboard context if present
-    let finalMessage = text;
-    if (dashboardContext) {
-      finalMessage = `[CONTEXT: Dashboard "${dashboardContext.title}" (File: ${dashboardContext.id}.json)]\n` +
-                    `Current Config: ${JSON.stringify(dashboardContext)}\n\n` +
-                    `User Request: ${text}\n\n` +
-                    `INSTRUCTION: You are in Dashboard Configurator mode. To add/modify widgets, use your tools to update the JSON file at 'nujin/dashboards/${dashboardContext.id}.json'.`;
-    }
+    // Dashboard context is handled exclusively by DashboardChat.tsx
+    const finalMessage = text;
 
     try {
       await window.hermesAPI.sendMessage(

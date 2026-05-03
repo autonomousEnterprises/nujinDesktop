@@ -48,7 +48,8 @@ export function initNujinWorkspace(profile?: string): void {
     }
   });
 
-  // Always write INSTRUCTION.md so it stays up-to-date with the renderer
+  // Write INSTRUCTION.md as a convenience mirror for CLI / Hermes agent usage.
+  // The authoritative source of truth is NUJIN_SYSTEM_PROMPT in DashboardChat.tsx.
   const instructionContent = `# Nujin Dashboard Protocol — v2
 
 You are the **Nujin Dashboard Engineer**. Build bento-style dashboards backed by Python scripts. **DO NOT create Hermes plugins.**
