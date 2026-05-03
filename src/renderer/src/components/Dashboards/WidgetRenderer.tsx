@@ -15,6 +15,7 @@ import {
   TableBody, 
   TableCell, 
   BadgeDelta,
+  Badge,
   Flex,
   ProgressBar,
   ProgressCircle,
@@ -36,6 +37,7 @@ interface WidgetRendererProps {
   widget: WidgetConfig;
   dashboardId: string;
   profile: string;
+  onDataFetched?: (data: any) => void;
 }
 
 const ICON_MAP: Record<string, any> = {
@@ -50,7 +52,32 @@ const ICON_MAP: Record<string, any> = {
   error: AlertCircle,
 };
 
-export default function WidgetRenderer({ widget, dashboardId, profile }: WidgetRendererProps) {
+const renderTableCell = (header: string, value: any) => {
+  if (value === undefined || value === null) return "-";
+  
+  const h = header.toLowerCase();
+  if (h === "status") {
+    const color = value.toLowerCase() === "active" || value.toLowerCase() === "vip" ? "green" : 
+                 value.toLowerCase() === "new" ? "blue" : "gray";
+    return (
+      <Badge color={color} size="xs" className="rounded-full px-2 py-0 font-bold text-[9px] uppercase">
+        {value}
+      </Badge>
+    );
+  }
+
+  if (typeof value === "string" && (value.startsWith("$") || h.includes("price") || h.includes("value") || h.includes("purchases"))) {
+    return <span className="font-bold text-slate-900 dark:text-white">{value}</span>;
+  }
+
+  if (typeof value === "number") {
+    return value.toLocaleString();
+  }
+
+  return value;
+};
+
+export default function WidgetRenderer({ widget, dashboardId, profile, onDataFetched }: WidgetRendererProps) {
   const [data, setData] = useState<any>(null);
   const [loading, setLoading] = useState(true);
 
@@ -59,6 +86,7 @@ export default function WidgetRenderer({ widget, dashboardId, profile }: WidgetR
       const result = await window.hermesAPI.dashboards.getWidgetData(dashboardId, widget.dataSource, profile);
       if (result) {
         setData(result);
+        onDataFetched?.(result);
       }
     } catch (e) {
       console.error("Failed to fetch widget data", e);
@@ -117,8 +145,8 @@ export default function WidgetRenderer({ widget, dashboardId, profile }: WidgetR
     }
 
     return (
-      <div className={`group relative h-full w-full border rounded-[28px] p-7 transition-all duration-500 hover:scale-[1.02] hover:shadow-2xl z-10 ${bgClass} ${borderClass} ${textClass} ${glow} ${className}`}>
-         <div className="relative z-10 h-full flex flex-col">
+      <div className={`group relative w-full border rounded-[28px] p-7 transition-all duration-500 hover:scale-[1.02] hover:shadow-2xl z-10 ${bgClass} ${borderClass} ${textClass} ${glow} ${className}`}>
+         <div className="relative z-10 flex flex-col">
             {children}
          </div>
       </div>
@@ -149,7 +177,7 @@ export default function WidgetRenderer({ widget, dashboardId, profile }: WidgetR
           )}
         </Flex>
         
-        <div className="mt-auto">
+        <div className="mt-4">
           <Flex justifyContent="start" className="gap-3 items-center">
             {data.delta && (
               <BadgeDelta deltaType={data.deltaType || "increase"} className="rounded-full px-3 py-1 font-bold text-[10px] shadow-sm">
@@ -162,7 +190,6 @@ export default function WidgetRenderer({ widget, dashboardId, profile }: WidgetR
               </Text>
             )}
           </Flex>
-          {/* Sparklines disabled due to missing SparkArea component in this Tremor version */}
         </div>
       </CardWrapper>
     );
@@ -177,7 +204,7 @@ export default function WidgetRenderer({ widget, dashboardId, profile }: WidgetR
           <Title className="text-xl font-black tracking-tight">{widget.title}</Title>
           {widget.description && <Subtitle className="text-xs opacity-60 mt-1 font-medium">{widget.description}</Subtitle>}
         </div>
-        <div className="flex-1 min-h-0">
+        <div className="h-[300px] w-full mt-4">
           <ChartComponent
             className="h-full w-full"
             data={data.series || []}
@@ -203,9 +230,9 @@ export default function WidgetRenderer({ widget, dashboardId, profile }: WidgetR
     return (
       <CardWrapper>
         <Title className="text-xl font-black mb-2 tracking-tight">{widget.title}</Title>
-        <div className="flex-1 flex items-center justify-center p-2 min-h-0">
+        <div className="h-[200px] w-full flex items-center justify-center p-2">
           <DonutChart
-            className="h-full w-full max-h-[180px]"
+            className="h-full w-full"
             data={data.series || []}
             category={widget.config?.category || "value"}
             index={widget.config?.index || "name"}
@@ -259,27 +286,28 @@ export default function WidgetRenderer({ widget, dashboardId, profile }: WidgetR
   // Table Rendering
   if (widgetType === "table") {
     return (
-      <CardWrapper className="p-0 overflow-hidden">
-        <div className="p-7 pb-4">
-          <Title className="text-2xl font-black tracking-tight">{widget.title}</Title>
-          {widget.description && <Text className="text-xs opacity-60 font-medium mt-1">{widget.description}</Text>}
+      <CardWrapper className="p-0 overflow-hidden flex flex-col">
+        <div className="p-6 pb-3">
+          <Title className="text-lg font-black tracking-tight leading-tight">{widget.title}</Title>
+          {widget.description && <Text className="text-[10px] opacity-50 font-bold uppercase tracking-tighter mt-0.5">{widget.description}</Text>}
         </div>
-        <div className="flex-1 overflow-hidden border-t border-border/40">
-          <div className="overflow-x-auto h-full scrollbar-hide">
-            <Table className="w-full border-collapse">
-              <TableHead className="bg-muted/30 sticky top-0 z-20">
-                <TableRow>
-                  {widget.config?.columns.map((col: string) => (
-                    <TableHeaderCell key={col} className="px-7 py-4 text-[10px] font-black uppercase tracking-[0.1em] opacity-40 text-left">{col}</TableHeaderCell>
+          <div className="overflow-x-auto max-h-full pb-2">
+            <Table className="mt-2 border-collapse">
+              <TableHead className="sticky top-0 bg-white dark:bg-slate-900 z-10 border-b border-slate-200 dark:border-slate-800">
+                <TableRow className="hover:bg-transparent">
+                  {(data.headers || widget.config?.columns || []).map((header: string) => (
+                    <TableHeaderCell key={header} className="text-[10px] uppercase tracking-wider py-2 font-semibold text-slate-400">
+                      {header}
+                    </TableHeaderCell>
                   ))}
                 </TableRow>
               </TableHead>
               <TableBody>
                 {(data.rows || []).map((row: any, idx: number) => (
-                  <TableRow key={idx} className="hover:bg-accent/5 transition-colors group/row border-b border-border/20 last:border-none">
-                    {widget.config?.columns.map((col: string) => (
-                      <TableCell key={col} className="px-7 py-5 text-sm font-semibold text-foreground/80">
-                        {row[col]}
+                  <TableRow key={idx} className="hover:bg-slate-50/50 dark:hover:bg-slate-800/50 border-b border-slate-100 dark:border-slate-800/50">
+                    {(data.headers || widget.config?.columns || []).map((header: string) => (
+                      <TableCell key={header} className="py-2.5 text-[11px] text-slate-600 dark:text-slate-300">
+                        {renderTableCell(header, row[header.toLowerCase()] || row[header])}
                       </TableCell>
                     ))}
                   </TableRow>
@@ -287,7 +315,6 @@ export default function WidgetRenderer({ widget, dashboardId, profile }: WidgetR
               </TableBody>
             </Table>
           </div>
-        </div>
       </CardWrapper>
     );
   }
