@@ -1,6 +1,7 @@
 import { useState, useEffect, useCallback } from "react";
 import { ChevronLeft, ChevronRight, RefreshCw } from "lucide-react";
-import Chat, { ChatMessage } from "../Chat/Chat";
+import DashboardChat from "./DashboardChat";
+import { ChatMessage } from "../Chat/Chat";
 import DashboardGrid from "../../components/Dashboards/DashboardGrid";
 import { DashboardConfig } from "../../../../main/dashboards";
 import "./Dashboards.css";
@@ -33,23 +34,25 @@ export default function Dashboards({ profile }: DashboardsProps) {
 
   // Sync chat when dashboard changes
   useEffect(() => {
-    if (currentDashboard) {
-      const savedMessages = dashboardChats[currentDashboard.id] || [];
-      const savedSession = dashboardSessions[currentDashboard.id] || null;
-      setMessages(savedMessages);
-      setCurrentSessionId(savedSession);
-    }
+    const key = currentDashboard ? currentDashboard.id : "new_dashboard";
+    const savedMessages = dashboardChats[key] || [];
+    const savedSession = dashboardSessions[key] || null;
+    setMessages(savedMessages);
+    setCurrentSessionId(savedSession);
   }, [currentDashboard?.id]);
 
   // Update persistence when messages or sessionId change
   useEffect(() => {
-    if (currentDashboard) {
-      setDashboardChats(prev => ({ ...prev, [currentDashboard.id]: messages }));
-      setDashboardSessions(prev => ({ ...prev, [currentDashboard.id]: currentSessionId }));
-    }
+    const key = currentDashboard ? currentDashboard.id : "new_dashboard";
+    setDashboardChats(prev => ({ ...prev, [key]: messages }));
+    setDashboardSessions(prev => ({ ...prev, [key]: currentSessionId }));
   }, [messages, currentSessionId]);
 
   const switchDashboard = async (id: string) => {
+    if (!id) {
+      setCurrentDashboard(null);
+      return;
+    }
     const config = await window.hermesAPI.dashboards.get(id, profile);
     if (config) {
       setCurrentDashboard(config);
@@ -101,6 +104,8 @@ export default function Dashboards({ profile }: DashboardsProps) {
   }, [currentDashboard, profile, loadDashboardList]);
 
   const handleNewChat = useCallback(() => {
+    setDashboardChats(prev => ({ ...prev, new_dashboard: [] }));
+    setDashboardSessions(prev => ({ ...prev, new_dashboard: null }));
     setMessages([]);
     setCurrentSessionId(null);
     setCurrentDashboard(null);
@@ -109,7 +114,7 @@ export default function Dashboards({ profile }: DashboardsProps) {
   return (
     <div className={`dashboards-screen ${currentDashboard ? "split-view" : "full-chat"}`}>
       <aside className={`chat-sidebar ${isSidebarOpen ? "open" : "closed"}`}>
-        <Chat
+        <DashboardChat
           messages={messages}
           setMessages={setMessages}
           profile={profile}
