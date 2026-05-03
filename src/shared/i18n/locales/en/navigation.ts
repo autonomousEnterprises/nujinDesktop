@@ -1,5 +1,6 @@
 export default {
   chat: "Chat",
+  dashboards: "Dashboards",
   sessions: "Sessions",
   agents: "Profiles",
   office: "Office",

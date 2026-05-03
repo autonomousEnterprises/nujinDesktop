@@ -206,6 +206,7 @@ interface ChatProps {
   profile?: string;
   onSessionStarted?: () => void;
   onNewChat?: () => void;
+  compact?: boolean;
 }
 
 function Chat({
@@ -215,6 +216,7 @@ function Chat({
   profile,
   onSessionStarted,
   onNewChat,
+  compact,
 }: ChatProps): React.JSX.Element {
   const { t } = useI18n();
   const [input, setInput] = useState("");
@@ -870,7 +872,7 @@ function Chat({
   );
 
   return (
-    <div className="chat-container">
+    <div className={`chat-container ${compact ? "chat-compact" : ""}`}>
       <div className="chat-header">
         <div className="chat-header-left">
           <div className="chat-header-title">
@@ -938,7 +940,8 @@ function Chat({
 
       <div className="chat-messages" ref={messagesContainerRef}>
         {messages.length === 0 ? (
-          <div className="chat-empty">
+          !compact && (
+            <div className="chat-empty">
             <div className="chat-empty-icon">
               <img src={icon} width={64} height={64} alt="" />
             </div>
@@ -1011,7 +1014,8 @@ function Chat({
               </button>
             </div>
           </div>
-        ) : (
+        )
+      ) : (
           visibleMessages.map((msg, i) => (
             <MessageRow
               key={msg.id}

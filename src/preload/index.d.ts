@@ -429,6 +429,19 @@ interface HermesAPI {
     logFile?: string,
     lines?: number,
   ) => Promise<{ content: string; path: string }>;
+
+  // Dashboards
+  dashboards: {
+    list: (profile?: string) => Promise<string[]>;
+    get: (id: string, profile?: string) => Promise<any>;
+    save: (id: string, config: any, profile?: string) => Promise<boolean>;
+    getWidgetData: (
+      dashboardId: string,
+      dataSource: string,
+      profile?: string,
+    ) => Promise<any>;
+    onUpdate: (callback: (filename: string) => void) => () => void;
+  };
 }
 
 declare global {

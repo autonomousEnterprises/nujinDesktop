@@ -1,5 +1,6 @@
 export default {
   chat: "聊天",
+  dashboards: "仪表板",
   sessions: "会话",
   agents: "档案",
   office: "工作区",

@@ -1,6 +1,6 @@
 import { useEffect } from "react";
 import splashBg from "../../assets/splash.png";
-import splashLogo from "../../assets/splashtext.png";
+import Logo from "../../assets/logo.png";
 
 interface SplashScreenProps {
   onFinished: () => void;
@@ -14,7 +14,7 @@ function SplashScreen({ onFinished }: SplashScreenProps): React.JSX.Element {
   return (
     <div className="splash-screen">
       <img className="splash-bg" src={splashBg} alt="" />
-      <img className="splash-logo" src={splashLogo} alt="Hermes Agent" />
+      <img className="splash-logo" src={Logo} alt="Nujin Desktop" />
     </div>
   );
 }

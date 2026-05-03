@@ -4724,3 +4724,49 @@ body {
   background: var(--selection);
   color: var(--text-primary);
 }
+
+/* Chat Compact Mode */
+.chat-compact {
+  height: 100% !important;
+  display: flex !important;
+  flex-direction: column !important;
+}
+.chat-compact .chat-header {
+  padding: 10px 16px;
+}
+.chat-compact .chat-messages {
+  flex: 1;
+  padding: 10px;
+  overflow-y: auto;
+}
+.chat-compact .chat-message {
+  margin-bottom: 12px;
+}
+.chat-compact .chat-bubble {
+  max-width: 95%;
+  font-size: 13px;
+}
+.chat-compact .chat-input-area {
+  padding: 12px 16px;
+  background: var(--bg-primary);
+  border-top: 1px solid var(--border);
+  margin-top: auto;
+}
+
+/* Tremor Fixes for Tailwind v4 */
+.tremor-BadgeDelta-root svg {
+  width: 1rem;
+  height: 1rem;
+}
+.tremor-Card-root {
+  border-radius: var(--radius-md) !important;
+  border-color: var(--border) !important;
+  background-color: var(--bg-secondary) !important;
+}
+.tremor-Metric-root {
+  color: var(--text-primary) !important;
+  font-weight: 700 !important;
+}
+.tremor-Text-root {
+  color: var(--text-secondary) !important;
+}

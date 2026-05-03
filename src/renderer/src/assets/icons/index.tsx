@@ -24,6 +24,7 @@ export {
   Users,
   Wrench,
   X,
+  LayoutDashboard as DashboardIcon,
 } from "lucide-react";
 
 export { RefreshCw as Refresh } from "lucide-react";

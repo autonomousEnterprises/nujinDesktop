@@ -106,6 +106,13 @@ import {
   resumeCronJob,
   triggerCronJob,
 } from "./cronjobs";
+import {
+  listDashboards,
+  getDashboard,
+  saveDashboard,
+  getWidgetData,
+  watchDashboards,
+} from "./dashboards";
 import { getAppLocale, setAppLocale } from "./locale";
 
 process.on("uncaughtException", (err) => {
@@ -141,6 +148,7 @@ function createWindow(): void {
 
   mainWindow.on("ready-to-show", () => {
     mainWindow!.show();
+    watchDashboards(mainWindow!);
   });
 
   mainWindow.webContents.on("render-process-gone", (_event, details) => {
@@ -670,6 +678,24 @@ function setupIPC(): void {
   // Log viewer
   ipcMain.handle("read-logs", (_event, logFile?: string, lines?: number) =>
     readLogs(logFile, lines),
+  );
+
+  // Dashboards
+  ipcMain.handle("list-dashboards", (_event, profile?: string) =>
+    listDashboards(profile),
+  );
+  ipcMain.handle("get-dashboard", (_event, id: string, profile?: string) =>
+    getDashboard(id, profile),
+  );
+  ipcMain.handle(
+    "save-dashboard",
+    (_event, id: string, config: any, profile?: string) =>
+      saveDashboard(id, config, profile),
+  );
+  ipcMain.handle(
+    "get-widget-data",
+    (_event, dashboardId: string, dataSource: string, profile?: string) =>
+      getWidgetData(dashboardId, dataSource, profile),
   );
 }
 

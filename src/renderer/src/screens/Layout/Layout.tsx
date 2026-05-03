@@ -12,6 +12,7 @@ import Office from "../Office/Office";
 import Models from "../Models/Models";
 import Providers from "../Providers/Providers";
 import Schedules from "../Schedules/Schedules";
+import Dashboards from "../Dashboards/Dashboards";
 import RemoteNotice from "../../components/RemoteNotice";
 import hermeslogo from "../../assets/hermes.png";
 import {
@@ -29,12 +30,14 @@ import {
   KeyRound,
   Timer,
   Download,
+  DashboardIcon,
 } from "../../assets/icons";
 import type { LucideIcon } from "lucide-react";
 import { useI18n } from "../../components/useI18n";
 
 type View =
   | "chat"
+  | "dashboards"
   | "sessions"
   | "agents"
   | "office"
@@ -50,6 +53,7 @@ type View =
 
 const NAV_ITEMS: { view: View; icon: LucideIcon; labelKey: string }[] = [
   { view: "chat", icon: ChatBubble, labelKey: "navigation.chat" },
+  { view: "dashboards", icon: DashboardIcon, labelKey: "navigation.dashboards" },
   { view: "sessions", icon: Clock, labelKey: "navigation.sessions" },
   { view: "agents", icon: Users, labelKey: "navigation.agents" },
   { view: "office", icon: Building, labelKey: "navigation.office" },
@@ -221,6 +225,7 @@ function Layout(): React.JSX.Element {
             onNewChat={handleNewChat}
           />
         </div>
+        {view === "dashboards" && <Dashboards profile={activeProfile} />}
         {view === "sessions" &&
           (remoteMode ? (
             <RemoteNotice feature="Sessions" />

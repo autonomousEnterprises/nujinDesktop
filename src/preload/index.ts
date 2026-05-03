@@ -632,6 +632,30 @@ const hermesAPI = {
     lines?: number,
   ): Promise<{ content: string; path: string }> =>
     ipcRenderer.invoke("read-logs", logFile, lines),
+
+  // Dashboards
+  dashboards: {
+    list: (profile?: string): Promise<string[]> =>
+      ipcRenderer.invoke("list-dashboards", profile),
+    get: (id: string, profile?: string): Promise<any> =>
+      ipcRenderer.invoke("get-dashboard", id, profile),
+    save: (id: string, config: any, profile?: string): Promise<boolean> =>
+      ipcRenderer.invoke("save-dashboard", id, config, profile),
+    getWidgetData: (
+      dashboardId: string,
+      dataSource: string,
+      profile?: string,
+    ): Promise<any> =>
+      ipcRenderer.invoke("get-widget-data", dashboardId, dataSource, profile),
+    onUpdate: (callback: (filename: string) => void): (() => void) => {
+      const handler = (
+        _event: Electron.IpcRendererEvent,
+        filename: string,
+      ): void => callback(filename);
+      ipcRenderer.on("dashboard-updated", handler);
+      return () => ipcRenderer.removeListener("dashboard-updated", handler);
+    },
+  },
 };
 
 if (process.contextIsolated) {
