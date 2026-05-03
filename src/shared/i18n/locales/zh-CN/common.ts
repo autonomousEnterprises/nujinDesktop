@@ -1,5 +1,5 @@
 export default {
-  appName: "Hermes Agent",
+  appName: "Nujin AI",
   continue: "继续",
   cancel: "取消",
   retry: "重试",

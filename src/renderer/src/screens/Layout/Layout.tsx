@@ -14,7 +14,7 @@ import Providers from "../Providers/Providers";
 import Schedules from "../Schedules/Schedules";
 import Dashboards from "../Dashboards/Dashboards";
 import RemoteNotice from "../../components/RemoteNotice";
-import hermeslogo from "../../assets/hermes.png";
+
 import {
   ChatBubble,
   Clock,
@@ -164,7 +164,9 @@ function Layout(): React.JSX.Element {
     <div className="layout">
       <aside className="sidebar">
         <div className="sidebar-brand">
-          <img src={hermeslogo} height={30} alt="" />
+          <h1 className="sidebar-brand-text">
+            Nujin <span className="text-gradient">AI</span>
+          </h1>
         </div>
 
         <nav className="sidebar-nav">
