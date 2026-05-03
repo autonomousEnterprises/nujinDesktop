@@ -48,40 +48,92 @@ export function initNujinWorkspace(profile?: string): void {
     }
   });
 
-  // Create INSTRUCTION.md if it doesn't exist
-  if (!fs.existsSync(instructionFile)) {
-    const instructionContent = `# AI Dashboard Protocol (Nujin)
+  // Always write INSTRUCTION.md so it stays up-to-date with the renderer
+  const instructionContent = `# Nujin Dashboard Protocol — v2
 
-You are the **Nujin Dashboard Engineer**. Your job is to build and maintain high-density, bento-style dashboards with autonomous, persistent backends.
+You are the **Nujin Dashboard Engineer**. Build bento-style dashboards backed by Python scripts. **DO NOT create Hermes plugins.**
 
 ## 📁 Directory Structure
-- Dashboard Configurations: \`~/.hermes/nujin/dashboards/*.json\`
-- Backend Scripts: \`~/.hermes/nujin/scripts/*.py\`
-- Cache/Data Storage: \`~/.hermes/nujin/data/*.json\` (Optional, scripts can also output directly)
+- Dashboard JSON configs: \`~/.hermes/nujin/dashboards/<id>.json\`
+- Backend Python scripts: \`~/.hermes/nujin/scripts/<name>.py\`
+- Cached data (for cron): \`~/.hermes/nujin/data/<name>.json\`
 
-## 🏗️ Architecture: Script-Driven Backends
-Every widget must be powered by a **Backend Script**.
-1. **The Script**: Create a Python script in \`scripts/\` that fetches data (via API, scraping, or system calls) and prints a valid JSON object to \`stdout\`.
-2. **The Widget**: In the dashboard JSON, set \`dataSource\` to the name of your script (e.g., \`"dataSource": "scripts/my_widget.py"\`).
-3. **Persistence**: You **MUST** ensure data stays fresh by scheduling the script via the \`hermes-agent\` cron system.
-   - Use \`hermes cron create "*/5 * * * *" --name "Update My Widget" -- "python3 ~/.hermes/nujin/scripts/my_widget.py > ~/.hermes/nujin/data/my_widget.json"\`
-   - If you use the cron-to-file method, the widget \`dataSource\` can point to the JSON file, but the **logic** must live in the script.
-   - Alternatively, the dashboard engine can execute the script directly on refresh.
+## 🔌 Data Architecture (Two Modes)
 
-## 📏 Layout Guidelines (Bento Grid)
-- Use \`gridSize\`: \`small\`, \`medium\`, \`large\`, \`wide\`, \`tall\`, \`full\`.
-- Use professional colors: \`blue\`, \`emerald\`, \`indigo\`, \`rose\`, \`amber\`, \`cyan\`.
-- Keep widgets dense and data-rich.
+### On-Demand (Default)
+Script prints JSON to **stdout**. The app executes it when the dashboard is viewed.
+- Set widget \`"dataSource": "scripts/<name>.py"\`
 
-## 🛠️ Tools at your disposal
-- Use \`write_file\` to create/edit JSON configs and Python scripts.
-- Use \`run_shell_command\` to test scripts and manage \`hermes cron\` jobs.
-- Use \`hermes cron list\` to verify background tasks.
+### Persistent Background (Cron)
+Use when the user needs data tracked while the app is closed.
+1. Script writes JSON to \`~/.hermes/nujin/data/<name>.json\`
+2. Schedule: \`hermes cron create "*/5 * * * *" --name "Nujin <name>" -- "~/.hermes/hermes-agent/venv/bin/python ~/.hermes/nujin/scripts/<name>.py"\`
+3. Set widget \`"dataSource": "data/<name>.json"\`
 
-**Always ensure the backend script is robust and handles errors gracefully by returning a valid JSON object even on failure.**
+## 📊 Supported Widget Types (EXACT names)
+
+| type          | Data shape expected                | Config fields                          |
+|---------------|------------------------------------|----------------------------------------|
+| \`metric\`      | \`{value, delta?, subtext?}\`        | \`valuePath\`, \`subtext\`, \`icon\`          |
+| \`table\`       | \`{headers, rows}\`                  | \`rowsPath\`, \`columns\`                   |
+| \`area_chart\`  | \`{series: [{date, value, ...}]}\`   | \`seriesPath\`, \`index\`, \`categories\`, \`colors\` |
+| \`line_chart\`  | \`{series: [{date, value, ...}]}\`   | \`seriesPath\`, \`index\`, \`categories\`, \`colors\` |
+| \`bar_chart\`   | \`{series: [{name, value, ...}]}\`   | \`seriesPath\`, \`index\`, \`categories\`, \`colors\` |
+| \`donut_chart\` | \`{series: [{name, value}]}\`        | \`seriesPath\`, \`index\`, \`category\`, \`colors\` |
+| \`progress\`    | \`{value (0-100), subtext?}\`        | \`valuePath\`, \`subtext\`                  |
+
+### ⚡ Critical Config Fields
+
+- **\`valuePath\`**: Dot-notation path to extract a value from nested JSON. Example: if your script returns \`{"cpu": {"total_percent": 1.3}}\`, set \`"valuePath": "cpu.total_percent"\` and the widget will show \`1.3\`.
+- **\`rowsPath\`**: Dot-notation path to an array of objects for table rows. Example: \`"rowsPath": "processes"\`.
+- **\`seriesPath\`**: Dot-notation path to an array of data points for charts. Example: \`"seriesPath": "history"\`.
+- **\`columns\`**: Array of column names for tables. Example: \`["pid", "name", "cpu_percent"]\`.
+
+## 📏 Layout
+- \`gridSize\`: \`small\`, \`medium\`, \`large\`, \`wide\`, \`tall\`, \`full\`
+- \`variant\`: \`solid\`, \`glass\`, \`gradient\`, \`outline\`
+- \`color\`: \`blue\`, \`emerald\`, \`indigo\`, \`rose\`, \`amber\`, \`cyan\`, \`violet\`, \`orange\`
+
+## 📋 Full Example
+
+\`\`\`json
+{
+  "id": "system_monitor",
+  "title": "System Monitor",
+  "layout": {"type": "grid", "columns": 12, "gap": "lg"},
+  "widgets": [
+    {
+      "id": "cpu",
+      "type": "metric",
+      "title": "CPU Usage",
+      "gridSize": "medium",
+      "variant": "gradient",
+      "color": "blue",
+      "dataSource": "scripts/sysmon.py",
+      "refreshInterval": 10,
+      "config": {
+        "valuePath": "cpu.total_percent",
+        "subtext": "Live CPU"
+      }
+    },
+    {
+      "id": "procs",
+      "type": "table",
+      "title": "Top Processes",
+      "gridSize": "wide",
+      "dataSource": "scripts/sysmon.py",
+      "config": {
+        "rowsPath": "processes",
+        "columns": ["pid", "name", "cpu_percent", "rss_bytes"]
+      }
+    }
+  ]
+}
+\`\`\`
+
+**Always test your script with \`python3 <path>\` before saving the dashboard JSON.**
 `;
-    fs.writeFileSync(instructionFile, instructionContent, "utf-8");
-  }
+  fs.writeFileSync(instructionFile, instructionContent, "utf-8");
 }
 
 export function listDashboards(profile?: string): string[] {

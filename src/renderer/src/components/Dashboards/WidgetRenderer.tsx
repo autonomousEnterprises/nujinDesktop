@@ -77,6 +77,73 @@ const renderTableCell = (header: string, value: any) => {
   return value;
 };
 
+/**
+ * Resolve a dot-notation path (e.g. "cpu.total_percent") against an object.
+ */
+function getNestedValue(obj: any, path: string): any {
+  if (!obj || !path) return undefined;
+  return path.split(".").reduce((acc, key) => acc?.[key], obj);
+}
+
+/**
+ * Transform raw script output into the shape the widget renderer expects,
+ * using valuePath / rowsPath / seriesPath from widget.config.
+ */
+function transformData(raw: any, widget: WidgetConfig): any {
+  if (!raw || raw.error) return raw;
+
+  const cfg = widget.config || {};
+  const wType = (widget.type || "").toLowerCase().trim();
+
+  // Metric widgets: extract a single value via valuePath
+  if (wType === "metric" || wType === "progress" || wType === "gauge" || wType === "sparkline") {
+    const vPath = cfg.valuePath || cfg.value_path;
+    if (vPath && raw.value === undefined) {
+      const resolved = getNestedValue(raw, vPath);
+      return {
+        value: resolved !== undefined ? resolved : raw.value,
+        delta: raw.delta || cfg.delta,
+        deltaType: raw.deltaType || cfg.deltaType,
+        subtext: raw.subtext || cfg.subtext,
+      };
+    }
+    return raw;
+  }
+
+  // Table / data_table widgets: extract rows via rowsPath
+  if (wType === "table" || wType === "data_table") {
+    const rPath = cfg.rowsPath || cfg.rows_path;
+    if (rPath && !raw.rows) {
+      const rows = getNestedValue(raw, rPath);
+      return {
+        headers: cfg.columns || (Array.isArray(rows) && rows.length > 0 ? Object.keys(rows[0]) : []),
+        rows: Array.isArray(rows) ? rows : [],
+      };
+    }
+    return raw;
+  }
+
+  // Chart widgets: extract series via seriesPath
+  if (["area_chart", "line_chart", "bar_chart", "chart"].includes(wType)) {
+    const sPath = cfg.seriesPath || cfg.series_path;
+    if (sPath && !raw.series) {
+      return { series: getNestedValue(raw, sPath) || [] };
+    }
+    return raw;
+  }
+
+  // Donut widgets
+  if (wType === "donut_chart" || wType === "donut") {
+    const sPath = cfg.seriesPath || cfg.series_path;
+    if (sPath && !raw.series) {
+      return { series: getNestedValue(raw, sPath) || [] };
+    }
+    return raw;
+  }
+
+  return raw;
+}
+
 export default function WidgetRenderer({ widget, dashboardId, profile, onDataFetched }: WidgetRendererProps) {
   const [data, setData] = useState<any>(null);
   const [loading, setLoading] = useState(true);
@@ -89,8 +156,9 @@ export default function WidgetRenderer({ widget, dashboardId, profile, onDataFet
       if (result && result.error) {
         setData({ error: result.error, details: result.details });
       } else if (result) {
-        setData(result);
-        onDataFetched?.(result);
+        const transformed = transformData(result, widget);
+        setData(transformed);
+        onDataFetched?.(transformed);
       } else {
         setData(null);
       }
@@ -213,8 +281,8 @@ export default function WidgetRenderer({ widget, dashboardId, profile, onDataFet
   }
 
   // Chart Rendering
-  if (widgetType === "area_chart" || widgetType === "line_chart" || widgetType === "chart") {
-    const ChartComponent = (widgetType === "area_chart" || widgetType === "chart") ? AreaChart : LineChart;
+  if (widgetType === "area_chart" || widgetType === "line_chart" || widgetType === "bar_chart" || widgetType === "chart") {
+    const ChartComponent = widgetType === "bar_chart" ? BarChart : (widgetType === "area_chart" || widgetType === "chart") ? AreaChart : LineChart;
     return (
       <CardWrapper>
         <div className="mb-4">
@@ -300,8 +368,8 @@ export default function WidgetRenderer({ widget, dashboardId, profile, onDataFet
     );
   }
 
-  // Table Rendering
-  if (widgetType === "table") {
+  // Table Rendering (also handles AI-generated "data_table" alias)
+  if (widgetType === "table" || widgetType === "data_table") {
     return (
       <CardWrapper className="p-0 overflow-hidden flex flex-col">
         <div className="p-6 pb-3">

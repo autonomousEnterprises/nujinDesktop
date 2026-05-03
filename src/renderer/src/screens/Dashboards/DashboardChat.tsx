@@ -548,28 +548,12 @@ function DashboardChat({
     ]);
     onSessionStarted?.();
 
-    // Inject dashboard context if present
-    let finalMessage = text;
-    if (dashboardContext) {
-      finalMessage = `[CONTEXT: Dashboard "${dashboardContext.title}" (File: ${dashboardContext.id}.json)]\n` +
-                    `Current Config: ${JSON.stringify(dashboardContext)}\n\n` +
-                    `User Request: ${text}\n\n` +
-                    `INSTRUCTION: You are in Dashboard Configurator mode. To add/modify widgets, update the JSON file at '~/.hermes/nujin/dashboards/${dashboardContext.id}.json'.\n` +
-                    `DATA ARCHITECTURE:\n` +
-                    `- **On-Demand (Default)**: Create a Python script in '~/.hermes/nujin/scripts/<name>.py' that prints valid JSON to stdout. Set widget 'dataSource' to 'scripts/<name>.py'.\n` +
-                    `- **Persistent Background Monitoring**: If the user asks to track history or monitor in the background while the app is closed: 1) Create the script to save its JSON to '~/.hermes/nujin/data/<name>.json'. 2) Use your shell tool to schedule it: \`hermes cron create "*/5 * * * *" --name "Nujin <name>" -- "~/.hermes/hermes-agent/venv/bin/python ~/.hermes/nujin/scripts/<name>.py"\`. 3) Set widget 'dataSource' to 'data/<name>.json'.\n` +
-                    `CRITICAL: DO NOT create Hermes plugins.`;
-    } else {
-      finalMessage = `User Request: ${text}\n\n` +
-                    `INSTRUCTION: You are in Dashboard Configurator mode. To create a new dashboard:\n` +
-                    `1. Create a Python backend script in '~/.hermes/nujin/scripts/<name>.py' that fetches data and outputs a JSON object.\n` +
-                    `2. Create a Dashboard JSON config at '~/.hermes/nujin/dashboards/<dashboard_id>.json' following the Nujin schema (id, title, layout, widgets).\n` +
-                    `DATA ARCHITECTURE:\n` +
-                    `- **On-Demand (Default)**: The script should print JSON to stdout. Set widget 'dataSource' to 'scripts/<name>.py'.\n` +
-                    `- **Persistent Background Monitoring**: If the user asks to track history or monitor in the background while the app is closed: 1) Have the script save JSON to '~/.hermes/nujin/data/<name>.json'. 2) Use your shell tool to schedule it: \`hermes cron create "*/5 * * * *" --name "Nujin <name>" -- "~/.hermes/hermes-agent/venv/bin/python ~/.hermes/nujin/scripts/<name>.py"\`. 3) Set widget 'dataSource' to 'data/<name>.json'.\n` +
-                    `3. The UI will automatically detect the JSON file and render the dashboard.\n` +
-                    `CRITICAL: DO NOT create a Hermes plugin. DO NOT put files in a 'plugins' folder. Only use the nujin/dashboards, nujin/scripts, and nujin/data directories.`;
-    }
+    // Always inject the full Nujin protocol + current dashboard context
+    const dashboardState = dashboardContext
+      ? `[ACTIVE DASHBOARD: "${dashboardContext.title}" — File: ~/.hermes/nujin/dashboards/${dashboardContext.id}.json]\nCurrent Config:\n${JSON.stringify(dashboardContext, null, 2)}`
+      : `[NO DASHBOARD YET — Create one by writing a JSON file to ~/.hermes/nujin/dashboards/<id>.json]`;
+
+    const finalMessage = `${NUJIN_SYSTEM_PROMPT}\n\n${dashboardState}\n\n---\nUser Request: ${text}`;
 
     try {
       await window.hermesAPI.sendMessage(
