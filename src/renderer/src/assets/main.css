@@ -35,6 +35,12 @@
   --scrollbar-thumb: #424242;
   --scrollbar-hover: #555555;
   --selection: rgba(0, 63, 122, 0.4);
+  
+  /* Dashboard Specific */
+  --dash-card-bg: var(--bg-secondary);
+  --dash-card-border: var(--border);
+  --dash-accent: #60a5fa;
+  --grad-neon: linear-gradient(135deg, #00f2ff 0%, #7d00ff 100%);
 }
 
 /* ----- Light Theme ----- */
@@ -69,6 +75,12 @@
   --scrollbar-thumb: #d4d4d4;
   --scrollbar-hover: #bbbbbb;
   --selection: rgba(0, 63, 122, 0.2);
+  
+  /* Dashboard Specific */
+  --dash-card-bg: #ffffff;
+  --dash-card-border: var(--border);
+  --dash-accent: #3b82f6;
+  --grad-neon: linear-gradient(135deg, #2563eb 0%, #7c3aed 100%);
 }
 
 /* ----- Google Sans ----- */
