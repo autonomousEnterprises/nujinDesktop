@@ -989,12 +989,14 @@ body {
 }
 
 .chat-header {
-  padding: 14px 24px;
+  padding: 16px 24px;
+  background: var(--bg-secondary);
   border-bottom: 1px solid var(--border);
   display: flex;
   align-items: center;
   justify-content: space-between;
   flex-shrink: 0;
+  z-index: 100;
 }
 
 .chat-header-title {
