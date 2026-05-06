@@ -17,7 +17,6 @@ export interface WidgetConfig {
   refreshInterval?: number; // in seconds
   config?: any; // Tremor specific config
   gridSize?: "small" | "medium" | "large" | "wide" | "tall" | "full";
-  variant?: "solid" | "glass" | "gradient" | "outline";
   color?: string;
 }
 
@@ -92,7 +91,6 @@ Use when the user needs data tracked while the app is closed.
 
 ## 📏 Layout
 - \`gridSize\`: \`small\`, \`medium\`, \`large\`, \`wide\`, \`tall\`, \`full\`
-- \`variant\`: \`solid\`, \`glass\`, \`gradient\`, \`outline\`
 - \`color\`: \`blue\`, \`emerald\`, \`indigo\`, \`rose\`, \`amber\`, \`cyan\`, \`violet\`, \`orange\`
 
 ## 📋 Full Example
@@ -108,7 +106,6 @@ Use when the user needs data tracked while the app is closed.
       "type": "metric",
       "title": "CPU Usage",
       "gridSize": "medium",
-      "variant": "gradient",
       "color": "blue",
       "dataSource": "scripts/sysmon.py",
       "refreshInterval": 10,

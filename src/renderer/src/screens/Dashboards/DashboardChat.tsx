@@ -63,7 +63,6 @@ VALUE FORMATTING (in widget config):
 
 LAYOUT OPTIONS:
 - gridSize: small, medium, large, wide, tall, full
-- variant: solid, glass, gradient, outline
 - color: blue, emerald, indigo, rose, amber, cyan, violet, orange
 
 WORKFLOW:

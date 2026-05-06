@@ -183,10 +183,9 @@ export default function WidgetRenderer({ widget, dashboardId, profile, onDataFet
 
   const widgetType = (widget.type || "").toLowerCase().trim();
   const WidgetIcon = widget.config?.icon ? ICON_MAP[widget.config.icon] : null;
-  const isGradient = widget.variant === "gradient";
 
   const CardWrapper = ({ children, className = "" }: { children: React.ReactNode, className?: string }) => (
-    <div className={`premium-card h-full w-full p-6 flex flex-col variant-${widget.variant || "solid"} ${className}`}>
+    <div className={`premium-card h-full w-full p-6 flex flex-col ${className}`}>
       {children}
     </div>
   );
