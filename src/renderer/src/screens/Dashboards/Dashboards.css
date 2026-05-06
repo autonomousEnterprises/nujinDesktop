@@ -202,6 +202,60 @@
   100% { background-position: 0% 50% }
 }
 
+/* Chart Fixes */
+.recharts-cartesian-grid-horizontal line,
+.recharts-cartesian-grid-vertical line {
+  stroke: var(--border);
+  stroke-opacity: 0.5;
+}
+
+.recharts-cartesian-axis-line,
+.recharts-cartesian-axis-tick-line {
+  stroke: var(--border);
+}
+
+.recharts-text {
+  fill: var(--text-secondary) !important;
+  font-size: 10px;
+  font-weight: 500;
+}
+
+/* Ensure Donut/Pie charts have visible segments */
+.recharts-sector {
+  stroke: var(--bg-secondary) !important;
+  stroke-width: 2px;
+}
+
+[data-theme="dark"] .recharts-sector {
+  stroke: var(--bg-secondary) !important;
+}
+
+.recharts-tooltip-cursor {
+  fill: var(--bg-tertiary);
+  fill-opacity: 0.3;
+}
+
+/* Tremor Color Utilities fallback */
+.fill-cyan-500 { fill: #06b6d4 !important; }
+.fill-violet-500 { fill: #8b5cf6 !important; }
+.fill-indigo-500 { fill: #6366f1 !important; }
+.fill-fuchsia-500 { fill: #d946ef !important; }
+.fill-rose-500 { fill: #f43f5e !important; }
+.fill-emerald-500 { fill: #10b981 !important; }
+.fill-amber-500 { fill: #f59e0b !important; }
+.fill-orange-500 { fill: #f97316 !important; }
+.fill-blue-500 { fill: #3b82f6 !important; }
+
+.stroke-cyan-500 { stroke: #06b6d4 !important; }
+.stroke-violet-500 { stroke: #8b5cf6 !important; }
+.stroke-indigo-500 { stroke: #6366f1 !important; }
+.stroke-fuchsia-500 { stroke: #d946ef !important; }
+.stroke-rose-500 { stroke: #f43f5e !important; }
+.stroke-emerald-500 { stroke: #10b981 !important; }
+.stroke-amber-500 { stroke: #f59e0b !important; }
+.stroke-orange-500 { stroke: #f97316 !important; }
+.stroke-blue-500 { stroke: #3b82f6 !important; }
+
 /* Scrollbar refinement */
 .dashboard-content::-webkit-scrollbar {
   width: 8px;

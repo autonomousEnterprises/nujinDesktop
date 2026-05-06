@@ -125,9 +125,36 @@ function transformData(raw: any, widget: WidgetConfig): any {
 
   if (["area_chart", "line_chart", "bar_chart", "chart", "donut_chart", "donut"].includes(wType)) {
     const sPath = cfg.seriesPath || cfg.series_path;
-    if (sPath && !raw.series) {
-      return { series: getNestedValue(raw, sPath) || [] };
+    let series = [];
+    
+    if (sPath) {
+      series = getNestedValue(raw, sPath) || [];
+    } else if (Array.isArray(raw)) {
+      series = raw;
+    } else if (raw.series) {
+      series = raw.series;
+    } else {
+      // Heuristic: search for the first key that contains an array of objects
+      const likelyKey = Object.keys(raw).find(k => Array.isArray(raw[k]) && raw[k].length > 0 && typeof raw[k][0] === "object");
+      if (likelyKey) {
+        series = raw[likelyKey];
+      }
     }
+
+    // Clean data: Ensure numeric values for potential categories
+    if (Array.isArray(series)) {
+      const cleanedSeries = series.map((item: any) => {
+        const cleaned: any = { ...item };
+        Object.keys(item).forEach(key => {
+          if (typeof item[key] === "string" && !isNaN(parseFloat(item[key])) && !["date", "timestamp", "time"].includes(key.toLowerCase())) {
+            cleaned[key] = parseFloat(item[key]);
+          }
+        });
+        return cleaned;
+      });
+      return { series: cleanedSeries };
+    }
+    
     return raw;
   }
 
@@ -235,13 +262,18 @@ export default function WidgetRenderer({ widget, dashboardId, profile, onDataFet
   // Chart Rendering
   if (["area_chart", "line_chart", "bar_chart", "chart"].includes(widgetType)) {
     const ChartComponent = widgetType === "bar_chart" ? BarChart : (widgetType === "area_chart" || widgetType === "chart") ? AreaChart : LineChart;
-    const index = widget.config?.index || "date";
+    // Improved category/index detection
+    let index = widget.config?.index || widget.config?.index_path;
     const series = data.series || [];
 
-    // Improved category detection
+    if (!index && series.length > 0) {
+      const keys = Object.keys(series[0]);
+      index = keys.find(k => ["date", "time", "timestamp", "name", "label", "day", "month"].includes(k.toLowerCase())) || keys[0];
+    }
+
     let categories = widget.config?.categories;
     if (!categories && series.length > 0) {
-      categories = Object.keys(series[0]).filter(k => k !== index && !isNaN(Number(series[0][k])));
+      categories = Object.keys(series[0]).filter(k => k !== index && !isNaN(parseFloat(String(series[0][k]))));
     }
     if (!categories || categories.length === 0) categories = ["value"];
 
@@ -263,8 +295,10 @@ export default function WidgetRenderer({ widget, dashboardId, profile, onDataFet
               showLegend={true}
               showAnimation={true}
               showGridLines={false}
-              curveType="smooth"
+              showXAxis={true}
+              showYAxis={true}
               yAxisWidth={60}
+              curveType="natural"
             />
           ) : (
             <div className="h-full w-full flex items-center justify-center opacity-30 border-2 border-dashed border-slate-700 rounded-xl">
@@ -282,15 +316,22 @@ export default function WidgetRenderer({ widget, dashboardId, profile, onDataFet
       <CardWrapper>
         <Title className="text-gradient-animated text-xl font-black tracking-tight mb-8">{widget.title}</Title>
         <div className="flex-1 flex items-center justify-center">
-          <DonutChart
-            className="h-64 w-full"
-            data={data.series || []}
-            category={widget.config?.category || "value"}
-            index={widget.config?.index || "name"}
-            colors={widget.config?.colors || NEON_COLORS}
-            showAnimation={true}
-            variant="pie"
-          />
+          {data.series && data.series.length > 0 ? (
+            <DonutChart
+              className="h-72 w-full"
+              data={data.series}
+              category={widget.config?.category || Object.keys(data.series[0]).find(k => !isNaN(parseFloat(String(data.series[0][k])))) || "value"}
+              index={widget.config?.index || widget.config?.index_path || Object.keys(data.series[0]).find(k => ["name", "label", "category", "type", "id"].includes(k.toLowerCase())) || Object.keys(data.series[0])[0]}
+              colors={widget.config?.colors || ["cyan", "violet", "indigo", "fuchsia", "rose", "emerald", "amber"]}
+              showAnimation={true}
+              variant="donut"
+              valueFormatter={(v) => `${v}`}
+            />
+          ) : (
+            <div className="h-full w-full flex items-center justify-center opacity-30 border-2 border-dashed border-slate-700 rounded-xl">
+              <Text className="text-slate-500 font-bold uppercase tracking-widest text-xs">No Data</Text>
+            </div>
+          )}
         </div>
       </CardWrapper>
     );

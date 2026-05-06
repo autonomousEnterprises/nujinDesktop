@@ -46,6 +46,24 @@
   --accent-neon: #00f2ff;
   --accent-purple: #7d00ff;
   --accent-pink: #ff00c8;
+
+  /* Tremor Colors fallback */
+  --tremor-brand-faint: #eff6ff;
+  --tremor-brand-muted: #bfdbfe;
+  --tremor-brand-subtle: #60a5fa;
+  --tremor-brand-default: #3b82f6;
+  --tremor-brand-emphasis: #1d4ed8;
+  --tremor-brand-inverted: #ffffff;
+  
+  --cyan-500: #06b6d4;
+  --violet-500: #8b5cf6;
+  --indigo-500: #6366f1;
+  --fuchsia-500: #d946ef;
+  --rose-500: #f43f5e;
+  --emerald-500: #10b981;
+  --amber-500: #f59e0b;
+  --orange-500: #f97316;
+  --blue-500: #3b82f6;
 }
 
 /* ----- Light Theme ----- */
@@ -86,6 +104,16 @@
   --dash-card-border: var(--border);
   --dash-accent: #3b82f6;
   --grad-neon: linear-gradient(135deg, #2563eb 0%, #7c3aed 100%);
+
+  --cyan-500: #06b6d4;
+  --violet-500: #8b5cf6;
+  --indigo-500: #6366f1;
+  --fuchsia-500: #d946ef;
+  --rose-500: #f43f5e;
+  --emerald-500: #10b981;
+  --amber-500: #f59e0b;
+  --orange-500: #f97316;
+  --blue-500: #3b82f6;
 }
 
 /* ----- Google Sans ----- */
