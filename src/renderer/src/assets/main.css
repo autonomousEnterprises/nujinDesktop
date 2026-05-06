@@ -41,6 +41,11 @@
   --dash-card-border: var(--border);
   --dash-accent: #60a5fa;
   --grad-neon: linear-gradient(135deg, #00f2ff 0%, #7d00ff 100%);
+  --neon-glow: 0 0 15px rgba(0, 242, 255, 0.3);
+  --card-glass: rgba(23, 23, 23, 0.7);
+  --accent-neon: #00f2ff;
+  --accent-purple: #7d00ff;
+  --accent-pink: #ff00c8;
 }
 
 /* ----- Light Theme ----- */
