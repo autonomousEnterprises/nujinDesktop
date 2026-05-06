@@ -32,7 +32,10 @@ import {
   AlertCircle,
   BarChart3,
   PieChart,
-  Table as TableIcon
+  Table as TableIcon,
+  ArrowUp,
+  ArrowDown,
+  ArrowUpDown
 } from "lucide-react";
 import { WidgetConfig } from "../../../../main/dashboards";
 import { formatValue, formatCellValue } from "./formatUtils";
@@ -134,6 +137,10 @@ function transformData(raw: any, widget: WidgetConfig): any {
 export default function WidgetRenderer({ widget, dashboardId, profile, onDataFetched }: WidgetRendererProps) {
   const [data, setData] = useState<any>(null);
   const [loading, setLoading] = useState(true);
+  const [sortConfig, setSortConfig] = useState<{ key: string; direction: "asc" | "desc" | null }>({
+    key: "",
+    direction: null,
+  });
 
   const fetchData = async () => {
     try {
@@ -317,6 +324,38 @@ export default function WidgetRenderer({ widget, dashboardId, profile, onDataFet
   // Table Rendering
   if (widgetType === "table" || widgetType === "data_table") {
     const headers = data.headers || widget.config?.columns || [];
+    const rows = data.rows || [];
+
+    const sortedRows = [...rows].sort((a, b) => {
+      if (!sortConfig.key || !sortConfig.direction) return 0;
+      
+      const key = sortConfig.key.toLowerCase();
+      const aVal = a[key] ?? a[sortConfig.key];
+      const bVal = b[key] ?? b[sortConfig.key];
+
+      if (aVal === bVal) return 0;
+      if (aVal === null || aVal === undefined) return 1;
+      if (bVal === null || bVal === undefined) return -1;
+
+      const order = sortConfig.direction === "asc" ? 1 : -1;
+      
+      if (typeof aVal === "number" && typeof bVal === "number") {
+        return (aVal - bVal) * order;
+      }
+      
+      return String(aVal).localeCompare(String(bVal)) * order;
+    });
+
+    const handleSort = (key: string) => {
+      setSortConfig(prev => {
+        if (prev.key === key) {
+          if (prev.direction === "asc") return { key, direction: "desc" };
+          if (prev.direction === "desc") return { key: "", direction: null };
+        }
+        return { key, direction: "asc" };
+      });
+    };
+
     return (
       <CardWrapper className="p-0 overflow-hidden">
         <div className="p-8 border-b border-slate-200 dark:border-slate-800">
@@ -324,17 +363,37 @@ export default function WidgetRenderer({ widget, dashboardId, profile, onDataFet
         </div>
         <div className="overflow-x-auto flex-1">
           <Table>
-            <TableHead className="">
+            <TableHead>
               <TableRow>
-                {headers.map((header: string) => (
-                  <TableHeaderCell key={header} className="p-6 text-slate-500 font-black uppercase tracking-[0.2em] text-[10px] border-b border-slate-200 dark:border-slate-800">
-                    {header}
-                  </TableHeaderCell>
-                ))}
+                {headers.map((header: string) => {
+                  const isSorted = sortConfig.key === header;
+                  return (
+                    <TableHeaderCell 
+                      key={header} 
+                      className="p-6 cursor-pointer hover:bg-slate-50 dark:hover:bg-slate-800/50 transition-colors group"
+                      onClick={() => handleSort(header)}
+                    >
+                      <div className="flex items-center gap-2">
+                        <span className="text-slate-500 font-black uppercase tracking-[0.2em] text-[10px]">
+                          {header}
+                        </span>
+                        <div className={`transition-all duration-300 ${isSorted ? "opacity-100 scale-110" : "opacity-0 group-hover:opacity-30"}`}>
+                          {sortConfig.direction === "asc" && isSorted ? (
+                            <ArrowUp size={12} className="text-accent" />
+                          ) : sortConfig.direction === "desc" && isSorted ? (
+                            <ArrowDown size={12} className="text-accent" />
+                          ) : (
+                            <ArrowUpDown size={12} />
+                          )}
+                        </div>
+                      </div>
+                    </TableHeaderCell>
+                  );
+                })}
               </TableRow>
             </TableHead>
             <TableBody>
-              {(data.rows || []).map((row: any, idx: number) => (
+              {sortedRows.map((row: any, idx: number) => (
                 <TableRow key={idx} className="hover:bg-white/5 transition-colors group">
                   {headers.map((header: string) => (
                     <TableCell key={header} className="p-6 text-slate-700 dark:text-slate-300 font-medium group-hover:text-indigo-600 dark:group-hover:text-white transition-colors">
