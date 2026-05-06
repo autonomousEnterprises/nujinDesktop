@@ -256,27 +256,69 @@
 .stroke-orange-500 { stroke: #f97316 !important; }
 .stroke-blue-500 { stroke: #3b82f6 !important; }
 
-/* Legend Fixes */
+/* Legend Fixes - Aggressive */
+.recharts-legend-wrapper {
+  padding: 0 !important;
+  margin: 0 !important;
+}
+
 .recharts-legend-item {
   display: inline-flex !important;
   align-items: center !important;
-  gap: 6px !important;
+  gap: 8px !important;
+  padding: 0 10px !important;
 }
 
-.recharts-legend-item svg {
+/* Nuclear Legend Fix */
+.recharts-legend-wrapper,
+.tremor-Legend-root {
+  display: block !important;
+  height: auto !important;
+  min-height: 20px !important;
+}
+
+.recharts-legend-item,
+.tremor-Legend-item {
+  display: inline-flex !important;
+  align-items: center !important;
+  vertical-align: middle !important;
+  margin-right: 15px !important;
+  width: auto !important;
+}
+
+/* Force-shrink everything that could be an icon */
+.recharts-legend-item svg,
+.recharts-legend-item circle,
+.recharts-legend-item path,
+.recharts-legend-item .recharts-surface,
+.tremor-Legend-itemIcon,
+.tremor-Legend-item svg {
   width: 10px !important;
   height: 10px !important;
-  margin-top: 2px !important;
+  min-width: 10px !important;
+  min-height: 10px !important;
+  max-width: 10px !important;
+  max-height: 10px !important;
+  flex: 0 0 10px !important;
+  margin: 0 !important;
+  padding: 0 !important;
+  border: none !important;
+  transform: none !important;
 }
 
-.recharts-legend-item .recharts-surface {
-  width: 10px !important;
-  height: 10px !important;
-}
-
+/* Ensure colors are inherited from tremor or passed explicitly */
 .tremor-Legend-itemIcon {
-  width: 8px !important;
-  height: 8px !important;
+  background-color: currentColor !important;
+  border-radius: 50% !important;
+}
+
+.recharts-legend-item-text,
+.tremor-Legend-itemText {
+  font-size: 11px !important;
+  line-height: 1 !important;
+  margin-left: 5px !important;
+  white-space: nowrap !important;
+  display: inline-block !important;
 }
 
 /* Scrollbar refinement */

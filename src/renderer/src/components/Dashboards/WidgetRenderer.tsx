@@ -1,5 +1,6 @@
 import { useState, useEffect } from "react";
 import {
+  Card,
   Metric,
   Text,
   Title,
@@ -8,6 +9,7 @@ import {
   BarChart,
   AreaChart,
   DonutChart,
+  Legend,
   Table,
   TableHead,
   TableRow,
@@ -282,6 +284,19 @@ export default function WidgetRenderer({ widget, dashboardId, profile, onDataFet
         <div className="mb-2">
           <Title className="text-gradient-animated text-xl font-black tracking-tight">{widget.title}</Title>
           {widget.description && <Subtitle className="text-slate-400 text-xs font-medium">{widget.description}</Subtitle>}
+          {series.length > 0 && (
+            <div className="mt-3 flex flex-wrap gap-x-4 gap-y-2">
+              {categories.map((cat: string, i: number) => (
+                <div key={cat} className="flex items-center gap-1.5 min-w-0">
+                  <div 
+                    className="w-2.5 h-2.5 rounded-full flex-shrink-0" 
+                    style={{ backgroundColor: `var(--${(widget.config?.colors || NEON_COLORS)[i % (widget.config?.colors || NEON_COLORS).length]}-500)` }}
+                  />
+                  <span className="text-[11px] font-medium text-slate-400 truncate max-w-[100px]">{cat}</span>
+                </div>
+              ))}
+            </div>
+          )}
         </div>
         <div className="flex-1 min-h-[260px] w-full">
           {series.length > 0 ? (
@@ -293,7 +308,7 @@ export default function WidgetRenderer({ widget, dashboardId, profile, onDataFet
                 categories={categories}
                 colors={widget.config?.colors || NEON_COLORS}
                 valueFormatter={widget.config?.valueFormatter}
-                showLegend={true}
+                showLegend={false}
                 showAnimation={true}
                 showGridLines={false}
                 showXAxis={true}
@@ -314,16 +329,35 @@ export default function WidgetRenderer({ widget, dashboardId, profile, onDataFet
 
   // Donut Rendering
   if (widgetType === "donut_chart" || widgetType === "donut") {
+    const series = data.series || [];
+    const indexKey = widget.config?.index || widget.config?.index_path || (series.length > 0 ? Object.keys(series[0]).find(k => ["name", "label", "category", "type", "id"].includes(k.toLowerCase())) || Object.keys(series[0])[0] : "name");
+    const legendCategories = series.map((item: any) => item[indexKey] || "Other");
+
     return (
       <CardWrapper>
-        <Title className="text-gradient-animated text-xl font-black tracking-tight mb-8">{widget.title}</Title>
+        <div className="mb-6">
+          <Title className="text-gradient-animated text-xl font-black tracking-tight">{widget.title}</Title>
+          {series.length > 0 && (
+            <div className="mt-3 flex flex-wrap gap-x-4 gap-y-2">
+              {legendCategories.map((cat: string, i: number) => (
+                <div key={cat} className="flex items-center gap-1.5 min-w-0">
+                  <div 
+                    className="w-2.5 h-2.5 rounded-full flex-shrink-0" 
+                    style={{ backgroundColor: `var(--${(widget.config?.colors || ["cyan", "violet", "indigo", "fuchsia", "rose", "emerald", "amber"])[i % 7]}-500)` }}
+                  />
+                  <span className="text-[11px] font-medium text-slate-400 truncate max-w-[100px]">{cat}</span>
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
         <div className="flex-1 flex items-center justify-center">
-          {data.series && data.series.length > 0 ? (
+          {series.length > 0 ? (
             <DonutChart
               className="h-72 w-full"
-              data={data.series}
-              category={widget.config?.category || Object.keys(data.series[0]).find(k => !isNaN(parseFloat(String(data.series[0][k])))) || "value"}
-              index={widget.config?.index || widget.config?.index_path || Object.keys(data.series[0]).find(k => ["name", "label", "category", "type", "id"].includes(k.toLowerCase())) || Object.keys(data.series[0])[0]}
+              data={series}
+              category={widget.config?.category || Object.keys(series[0]).find(k => !isNaN(parseFloat(String(series[0][k])))) || "value"}
+              index={indexKey}
               colors={widget.config?.colors || ["cyan", "violet", "indigo", "fuchsia", "rose", "emerald", "amber"]}
               showAnimation={true}
               variant="donut"
