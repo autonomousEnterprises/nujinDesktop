@@ -37,7 +37,8 @@ import {
   Table as TableIcon,
   ArrowUp,
   ArrowDown,
-  ArrowUpDown
+  ArrowUpDown,
+  Sparkles
 } from "lucide-react";
 import { WidgetConfig } from "../../../../main/dashboards";
 import { formatValue, formatCellValue } from "./formatUtils";
@@ -47,6 +48,7 @@ interface WidgetRendererProps {
   dashboardId: string;
   profile: string;
   onDataFetched?: (data: any) => void;
+  onSummarize?: (data: any, title: string) => void;
 }
 
 const ICON_MAP: Record<string, any> = {
@@ -163,7 +165,7 @@ function transformData(raw: any, widget: WidgetConfig): any {
   return raw;
 }
 
-export default function WidgetRenderer({ widget, dashboardId, profile, onDataFetched }: WidgetRendererProps) {
+export default function WidgetRenderer({ widget, dashboardId, profile, onDataFetched, onSummarize }: WidgetRendererProps) {
   const [data, setData] = useState<any>(null);
   const [loading, setLoading] = useState(true);
   const [sortConfig, setSortConfig] = useState<{ key: string; direction: "asc" | "desc" | null }>({
@@ -221,7 +223,13 @@ export default function WidgetRenderer({ widget, dashboardId, profile, onDataFet
   const WidgetIcon = widget.config?.icon ? ICON_MAP[widget.config.icon] : null;
 
   const CardWrapper = ({ children, className = "" }: { children: React.ReactNode, className?: string }) => (
-    <div className={`premium-card h-full w-full p-6 flex flex-col ${className}`}>
+    <div 
+      className={`premium-card h-full w-full p-6 flex flex-col cursor-pointer transition-all hover:scale-[1.01] hover:ring-2 hover:ring-dash-accent/30 group relative overflow-hidden ${className}`}
+      onClick={() => onSummarize && onSummarize(data, widget.title)}
+    >
+      <div className="absolute top-2 right-2 opacity-0 group-hover:opacity-100 transition-opacity bg-dash-accent/10 p-1.5 rounded-full text-dash-accent">
+        <Sparkles size={12} />
+      </div>
       {children}
     </div>
   );

@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef, useCallback, useMemo, memo } from "react";
+import { useState, useEffect, useRef, useCallback, useMemo, memo, useImperativeHandle, forwardRef } from "react";
 import icon from "../../assets/icon.png";
 import { AgentMarkdown } from "../../components/AgentMarkdown";
 import {
@@ -274,7 +274,11 @@ interface DashboardChatProps {
   onSwitchDashboard?: (id: string) => void;
 }
 
-function DashboardChat({
+export interface DashboardChatHandle {
+  sendMessage: (text: string) => Promise<void>;
+}
+
+const DashboardChat = memo(forwardRef<DashboardChatHandle, DashboardChatProps>(function DashboardChat({
   messages,
   setMessages,
   sessionId,
@@ -285,7 +289,7 @@ function DashboardChat({
   dashboardContext,
   dashboardList,
   onSwitchDashboard,
-}: DashboardChatProps): React.JSX.Element {
+}, ref): React.JSX.Element {
   const { t } = useI18n();
   const [input, setInput] = useState("");
   const [isLoading, setIsLoading] = useState(false);
@@ -303,6 +307,12 @@ function DashboardChat({
   const inputRef = useRef<HTMLTextAreaElement>(null);
   const isLoadingRef = useRef(false);
   const userScrolledUpRef = useRef(false);
+
+  useImperativeHandle(ref, () => ({
+    sendMessage: async (text: string) => {
+      await handleSendInternal(text);
+    }
+  }));
 
   // Sync internal sessionId with prop
   useEffect(() => {
@@ -565,8 +575,7 @@ function DashboardChat({
     return () => window.removeEventListener("keydown", handleKeyDown);
   }, [onNewChat]);
 
-  async function handleSend(): Promise<void> {
-    const text = input.trim();
+  const handleSendInternal = async (text: string) => {
     if (!text || isLoading) return;
 
     setSlashMenuOpen(false);
@@ -599,7 +608,7 @@ function DashboardChat({
       ...prev,
       { id: `user-${Date.now()}`, role: "user", content: text },
     ]);
-    onSessionStarted?.();
+    onSessionStarted?.(hermesSessionId || "");
 
     // Always inject the full Nujin protocol + current dashboard context
     const dashboardState = dashboardContext
@@ -611,13 +620,17 @@ function DashboardChat({
     try {
       await window.hermesAPI.sendMessage(
         finalMessage,
-        profile,
+        profile || "",
         hermesSessionId || undefined,
         messages.map((m) => ({ role: m.role, content: m.content })),
       );
     } catch {
       // Error already handled by onChatError IPC listener — avoid duplicate
     }
+  };
+
+  async function handleSend(): Promise<void> {
+    await handleSendInternal(input);
   }
 
   async function handleQuickAsk(): Promise<void> {
@@ -1235,6 +1248,6 @@ function DashboardChat({
       </div>
     </div>
   );
-}
+}));
 
 export default DashboardChat;

@@ -1,8 +1,8 @@
-import { useState, useEffect, useCallback } from "react";
-import { ChevronLeft, ChevronRight, RefreshCw } from "lucide-react";
-import DashboardChat from "./DashboardChat";
+import { useState, useEffect, useCallback, useRef } from "react";
+import { ChevronLeft, ChevronRight, RefreshCw, Sparkles } from "lucide-react";
+import DashboardChat, { DashboardChatHandle } from "./DashboardChat";
 import { ChatMessage } from "../Chat/Chat";
-import DashboardGrid from "../../components/Dashboards/DashboardGrid";
+import DashboardGrid, { DashboardGridHandle } from "../../components/Dashboards/DashboardGrid";
 import { DashboardConfig } from "../../../../main/dashboards";
 import "./Dashboards.css";
 
@@ -18,6 +18,9 @@ export default function Dashboards({ profile, selectedDashboardId, onDashboardSe
   const [currentDashboard, setCurrentDashboard] = useState<DashboardConfig | null>(null);
   const [dashboardList, setDashboardList] = useState<string[]>([]);
   const [isSidebarOpen, setIsSidebarOpen] = useState(true);
+  
+  const chatRef = useRef<DashboardChatHandle>(null);
+  const gridRef = useRef<DashboardGridHandle>(null);
 
   // Persistence for chats per dashboard
   const [dashboardChats, setDashboardChats] = useState<Record<string, ChatMessage[]>>({});
@@ -125,10 +128,29 @@ export default function Dashboards({ profile, selectedDashboardId, onDashboardSe
     if (onDashboardSelected) onDashboardSelected(null);
   }, [onDashboardSelected]);
 
+  const handleSummarizeWidget = useCallback((data: any, title: string) => {
+    if (!isSidebarOpen) setIsSidebarOpen(true);
+    
+    const prompt = `Please summarize the data for the "${title}" widget:\n\n${JSON.stringify(data, null, 2)}`;
+    chatRef.current?.sendMessage(prompt);
+  }, [isSidebarOpen]);
+
+  const handleSummarizeDashboard = useCallback(() => {
+    if (!currentDashboard) return;
+    if (!isSidebarOpen) setIsSidebarOpen(true);
+    
+    const allData = gridRef.current?.getDashboardData() || {};
+    const prompt = `Please provide a high-level summary of the entire "${currentDashboard.title}" dashboard. 
+    Here is the data for all widgets:\n\n${JSON.stringify(allData, null, 2)}`;
+    
+    chatRef.current?.sendMessage(prompt);
+  }, [currentDashboard, isSidebarOpen]);
+
   return (
     <div className={`dashboards-screen ${currentDashboard ? "split-view" : "full-chat"}`}>
       <aside className={`chat-sidebar ${isSidebarOpen ? "open" : "closed"}`}>
         <DashboardChat
+          ref={chatRef}
           messages={messages}
           setMessages={setMessages}
           profile={profile}
@@ -170,13 +192,22 @@ export default function Dashboards({ profile, selectedDashboardId, onDashboardSe
             </div>
             
             <div className="dashboard-actions">
+              <button className="refresh-btn mr-2" onClick={handleSummarizeDashboard} title="AI Summary of whole Dashboard">
+                <Sparkles size={14} className="mr-2 text-dash-accent" />
+                AI Summary
+              </button>
               <button className="refresh-btn" onClick={() => window.hermesAPI.dashboards.get(currentDashboard.id, profile).then(setCurrentDashboard)}>
                 <RefreshCw size={14} className="mr-2" />
                 Refresh
               </button>
             </div>
           </header>
-          <DashboardGrid dashboard={currentDashboard} profile={profile} />
+          <DashboardGrid 
+            ref={gridRef}
+            dashboard={currentDashboard} 
+            profile={profile} 
+            onSummarizeWidget={handleSummarizeWidget}
+          />
         </main>
       )}
     </div>

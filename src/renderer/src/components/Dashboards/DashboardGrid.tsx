@@ -1,9 +1,11 @@
+import { useRef, useImperativeHandle, forwardRef } from "react";
 import WidgetRenderer from "./WidgetRenderer";
 import { DashboardConfig } from "../../../../main/dashboards";
 
 interface DashboardGridProps {
   dashboard: DashboardConfig;
   profile: string;
+  onSummarizeWidget?: (data: any, title: string) => void;
 }
 
 const getWidthClasses = (widget: any) => {
@@ -29,7 +31,16 @@ const getWidthClasses = (widget: any) => {
   }
 };
 
-export default function DashboardGrid({ dashboard, profile }: DashboardGridProps) {
+export interface DashboardGridHandle {
+  getDashboardData: () => Record<string, any>;
+}
+
+const DashboardGrid = forwardRef<DashboardGridHandle, DashboardGridProps>(function DashboardGrid({ dashboard, profile, onSummarizeWidget }, ref) {
+  const widgetDataRef = useRef<Record<string, any>>({});
+
+  useImperativeHandle(ref, () => ({
+    getDashboardData: () => widgetDataRef.current
+  }));
   return (
     <div className="@container/dashboard-grid grid grid-cols-1 @min-[600px]:grid-cols-2 @min-[1100px]:grid-cols-3 @min-[1400px]:grid-cols-4 gap-6 md:gap-8 p-1 pb-10 items-start">
       {dashboard.widgets.map((widget) => {
@@ -44,10 +55,16 @@ export default function DashboardGrid({ dashboard, profile }: DashboardGridProps
               widget={widget} 
               dashboardId={dashboard.id}
               profile={profile} 
+              onSummarize={onSummarizeWidget}
+              onDataFetched={(data) => {
+                widgetDataRef.current[widget.id] = data;
+              }}
             />
           </div>
         );
       })}
     </div>
   );
-}
+});
+
+export default DashboardGrid;
