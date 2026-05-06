@@ -285,21 +285,23 @@ export default function WidgetRenderer({ widget, dashboardId, profile, onDataFet
         </div>
         <div className="flex-1 min-h-[260px] w-full">
           {series.length > 0 ? (
-            <ChartComponent
-              className="h-full w-full mt-4"
-              data={series}
-              index={index}
-              categories={categories}
-              colors={widget.config?.colors || NEON_COLORS}
-              valueFormatter={widget.config?.valueFormatter}
-              showLegend={true}
-              showAnimation={true}
-              showGridLines={false}
-              showXAxis={true}
-              showYAxis={true}
-              yAxisWidth={60}
-              curveType="natural"
-            />
+            <div className="h-80 w-full mt-4">
+              <ChartComponent
+                className="h-full w-full"
+                data={series}
+                index={index}
+                categories={categories}
+                colors={widget.config?.colors || NEON_COLORS}
+                valueFormatter={widget.config?.valueFormatter}
+                showLegend={true}
+                showAnimation={true}
+                showGridLines={false}
+                showXAxis={true}
+                showYAxis={true}
+                yAxisWidth={60}
+                curveType="natural"
+              />
+            </div>
           ) : (
             <div className="h-full w-full flex items-center justify-center opacity-30 border-2 border-dashed border-slate-700 rounded-xl">
               <Text className="text-slate-500 font-bold uppercase tracking-widest text-xs">No Data Points</Text>
@@ -325,7 +327,7 @@ export default function WidgetRenderer({ widget, dashboardId, profile, onDataFet
               colors={widget.config?.colors || ["cyan", "violet", "indigo", "fuchsia", "rose", "emerald", "amber"]}
               showAnimation={true}
               variant="donut"
-              valueFormatter={(v) => `${v}`}
+              valueFormatter={(v) => `${v.toFixed(1)}%`}
             />
           ) : (
             <div className="h-full w-full flex items-center justify-center opacity-30 border-2 border-dashed border-slate-700 rounded-xl">

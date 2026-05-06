@@ -256,6 +256,29 @@
 .stroke-orange-500 { stroke: #f97316 !important; }
 .stroke-blue-500 { stroke: #3b82f6 !important; }
 
+/* Legend Fixes */
+.recharts-legend-item {
+  display: inline-flex !important;
+  align-items: center !important;
+  gap: 6px !important;
+}
+
+.recharts-legend-item svg {
+  width: 10px !important;
+  height: 10px !important;
+  margin-top: 2px !important;
+}
+
+.recharts-legend-item .recharts-surface {
+  width: 10px !important;
+  height: 10px !important;
+}
+
+.tremor-Legend-itemIcon {
+  width: 8px !important;
+  height: 8px !important;
+}
+
 /* Scrollbar refinement */
 .dashboard-content::-webkit-scrollbar {
   width: 8px;
