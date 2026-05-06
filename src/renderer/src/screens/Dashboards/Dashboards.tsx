@@ -8,9 +8,11 @@ import "./Dashboards.css";
 
 interface DashboardsProps {
   profile: string;
+  selectedDashboardId?: string | null;
+  onDashboardSelected?: (id: string | null) => void;
 }
 
-export default function Dashboards({ profile }: DashboardsProps) {
+export default function Dashboards({ profile, selectedDashboardId, onDashboardSelected }: DashboardsProps) {
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [currentSessionId, setCurrentSessionId] = useState<string | null>(null);
   const [currentDashboard, setCurrentDashboard] = useState<DashboardConfig | null>(null);
@@ -27,10 +29,21 @@ export default function Dashboards({ profile }: DashboardsProps) {
     return list;
   }, [profile]);
 
-  // Load dashboards on mount but do NOT auto-select, leaving a blank configurator
+  // Load dashboards on mount
   useEffect(() => {
     loadDashboardList();
   }, [loadDashboardList]);
+
+  // Sync with external selectedDashboardId
+  useEffect(() => {
+    if (selectedDashboardId !== undefined) {
+      if (selectedDashboardId === null) {
+        setCurrentDashboard(null);
+      } else if (selectedDashboardId !== currentDashboard?.id) {
+        switchDashboard(selectedDashboardId);
+      }
+    }
+  }, [selectedDashboardId]);
 
   // Sync chat when dashboard changes
   useEffect(() => {
@@ -109,7 +122,8 @@ export default function Dashboards({ profile }: DashboardsProps) {
     setMessages([]);
     setCurrentSessionId(null);
     setCurrentDashboard(null);
-  }, []);
+    if (onDashboardSelected) onDashboardSelected(null);
+  }, [onDashboardSelected]);
 
   return (
     <div className={`dashboards-screen ${currentDashboard ? "split-view" : "full-chat"}`}>
@@ -131,7 +145,10 @@ export default function Dashboards({ profile }: DashboardsProps) {
             }
           }}
           dashboardList={dashboardList}
-          onSwitchDashboard={switchDashboard}
+          onSwitchDashboard={(id) => {
+            if (onDashboardSelected) onDashboardSelected(id || null);
+            switchDashboard(id);
+          }}
         />
       </aside>
 

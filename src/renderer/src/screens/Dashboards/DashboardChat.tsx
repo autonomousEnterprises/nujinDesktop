@@ -254,7 +254,7 @@ interface ModelGroup {
 
 import { PROVIDERS } from "../../constants";
 import { useI18n } from "../../components/useI18n";
-import DashboardDropdown from "../../components/Dashboards/DashboardDropdown";
+// import DashboardDropdown from "../../components/Dashboards/DashboardDropdown";
 interface DashboardConfig {
   id: string;
   title: string;
@@ -959,16 +959,10 @@ function DashboardChat({
       <div className="chat-header">
         <div className="chat-header-left">
           <div className="chat-header-title">
-            {dashboardList && onSwitchDashboard ? (
-              <DashboardDropdown 
-                currentId={dashboardContext?.id || "new_dashboard"}
-                dashboardList={dashboardList}
-                onSwitch={(id) => onSwitchDashboard(id === "new_dashboard" ? "" : id)}
-              />
-            ) : sessionId ? (
+            {sessionId ? (
               t("chat.sessionTitle", { id: sessionId.slice(-6) })
             ) : (
-              "New Dashboard"
+              "Dashboard Configurator"
             )}
           </div>
           {usage && (

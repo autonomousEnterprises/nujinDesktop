@@ -31,6 +31,9 @@ import {
   Timer,
   Download,
   DashboardIcon,
+  ChevronDown,
+  ChevronRight,
+  Plus,
 } from "../../assets/icons";
 import type { LucideIcon } from "lucide-react";
 import { useI18n } from "../../components/useI18n";
@@ -78,6 +81,24 @@ function Layout(): React.JSX.Element {
   const [officeVisited, setOfficeVisited] = useState(false);
   // Remote mode — many screens show "not available" instead of empty data
   const [remoteMode, setRemoteMode] = useState(false);
+
+  // Dashboards state
+  const [dashboardList, setDashboardList] = useState<string[]>([]);
+  const [selectedDashboardId, setSelectedDashboardId] = useState<string | null>(null);
+  const [isDashboardsExpanded, setIsDashboardsExpanded] = useState(true);
+
+  const loadDashboardList = useCallback(async () => {
+    const list = await window.hermesAPI.dashboards.list(activeProfile);
+    setDashboardList(list);
+  }, [activeProfile]);
+
+  useEffect(() => {
+    loadDashboardList();
+    const cleanup = window.hermesAPI.dashboards.onUpdate(() => {
+      loadDashboardList();
+    });
+    return cleanup;
+  }, [loadDashboardList]);
 
   // Re-check remote mode on tab switch (picks up Settings changes)
   useEffect(() => {
@@ -171,17 +192,58 @@ function Layout(): React.JSX.Element {
 
         <nav className="sidebar-nav">
           {NAV_ITEMS.map(({ view: v, icon: Icon, labelKey }) => (
-            <button
-              key={v}
-              className={`sidebar-nav-item ${view === v ? "active" : ""}`}
-              onClick={() => {
-                if (v === "office") setOfficeVisited(true);
-                setView(v);
-              }}
-            >
-              <Icon size={16} />
-              {t(labelKey)}
-            </button>
+            <div key={v} className="sidebar-nav-group">
+              <div className={`sidebar-nav-item-wrapper ${view === v ? "active" : ""}`}>
+                <button
+                  className="sidebar-nav-item"
+                  onClick={() => {
+                    if (v === "office") setOfficeVisited(true);
+                    setView(v);
+                  }}
+                >
+                  <Icon size={16} />
+                  {t(labelKey)}
+                </button>
+                {v === "dashboards" && (
+                  <button 
+                    className="sidebar-nav-expand"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      setIsDashboardsExpanded(!isDashboardsExpanded);
+                    }}
+                  >
+                    {isDashboardsExpanded ? <ChevronDown size={14} /> : <ChevronRight size={14} />}
+                  </button>
+                )}
+              </div>
+              
+              {v === "dashboards" && isDashboardsExpanded && (
+                <div className="sidebar-sub-nav">
+                  <button 
+                    className={`sidebar-sub-nav-item ${!selectedDashboardId ? "active" : ""}`}
+                    onClick={() => {
+                      setSelectedDashboardId(null);
+                      setView("dashboards");
+                    }}
+                  >
+                    <Plus size={12} />
+                    <span>New Dashboard</span>
+                  </button>
+                  {dashboardList.map(id => (
+                    <button
+                      key={id}
+                      className={`sidebar-sub-nav-item ${selectedDashboardId === id ? "active" : ""}`}
+                      onClick={() => {
+                        setSelectedDashboardId(id);
+                        setView("dashboards");
+                      }}
+                    >
+                      {id.split('_').map(w => w.charAt(0).toUpperCase() + w.slice(1)).join(' ')}
+                    </button>
+                  ))}
+                </div>
+              )}
+            </div>
           ))}
         </nav>
 
@@ -227,7 +289,13 @@ function Layout(): React.JSX.Element {
             onNewChat={handleNewChat}
           />
         </div>
-        {view === "dashboards" && <Dashboards profile={activeProfile} />}
+        {view === "dashboards" && (
+          <Dashboards 
+            profile={activeProfile} 
+            selectedDashboardId={selectedDashboardId}
+            onDashboardSelected={setSelectedDashboardId}
+          />
+        )}
         {view === "sessions" &&
           (remoteMode ? (
             <RemoteNotice feature="Sessions" />

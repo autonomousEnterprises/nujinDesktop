@@ -4,6 +4,7 @@ export {
   Brain,
   Building,
   ChevronDown,
+  ChevronRight,
   Clock,
   Copy,
   Download,
