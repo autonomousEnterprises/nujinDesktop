@@ -241,7 +241,7 @@ export default function WidgetRenderer({ widget, dashboardId, profile, onDataFet
     return (
       <CardWrapper className="gap-2">
         <div className="mb-2">
-          <Title className="text-white text-xl font-black tracking-tight">{widget.title}</Title>
+          <Title className="text-slate-900 dark:text-white text-xl font-black tracking-tight">{widget.title}</Title>
           {widget.description && <Subtitle className="text-slate-400 text-xs font-medium">{widget.description}</Subtitle>}
         </div>
         <div className="flex-1 min-h-[260px] w-full">
@@ -273,7 +273,7 @@ export default function WidgetRenderer({ widget, dashboardId, profile, onDataFet
   if (widgetType === "donut_chart" || widgetType === "donut") {
     return (
       <CardWrapper>
-        <Title className="text-white text-xl font-black tracking-tight mb-8">{widget.title}</Title>
+        <Title className="text-slate-900 dark:text-white text-xl font-black tracking-tight mb-8">{widget.title}</Title>
         <div className="flex-1 flex items-center justify-center">
           <DonutChart
             className="h-64 w-full"
@@ -303,7 +303,7 @@ export default function WidgetRenderer({ widget, dashboardId, profile, onDataFet
             </Metric>
           </div>
           <ProgressCircle value={value} size="lg" color={color}>
-            <span className="text-sm font-black text-white">{value}%</span>
+            <span className="text-sm font-black text-slate-900 dark:text-white">{value}%</span>
           </ProgressCircle>
         </Flex>
         <div className="mt-auto">
@@ -319,15 +319,15 @@ export default function WidgetRenderer({ widget, dashboardId, profile, onDataFet
     const headers = data.headers || widget.config?.columns || [];
     return (
       <CardWrapper className="p-0 overflow-hidden">
-        <div className="p-8 border-b border-slate-800">
-          <Title className="text-white text-xl font-black tracking-tight">{widget.title}</Title>
+        <div className="p-8 border-b border-slate-200 dark:border-slate-800">
+          <Title className="text-slate-900 dark:text-white text-xl font-black tracking-tight">{widget.title}</Title>
         </div>
         <div className="overflow-x-auto flex-1">
           <Table>
             <TableHead className="">
               <TableRow>
                 {headers.map((header: string) => (
-                  <TableHeaderCell key={header} className="p-6 text-slate-500 font-black uppercase tracking-[0.2em] text-[10px] border-b border-slate-800">
+                  <TableHeaderCell key={header} className="p-6 text-slate-500 font-black uppercase tracking-[0.2em] text-[10px] border-b border-slate-200 dark:border-slate-800">
                     {header}
                   </TableHeaderCell>
                 ))}
@@ -337,7 +337,7 @@ export default function WidgetRenderer({ widget, dashboardId, profile, onDataFet
               {(data.rows || []).map((row: any, idx: number) => (
                 <TableRow key={idx} className="hover:bg-white/5 transition-colors group">
                   {headers.map((header: string) => (
-                    <TableCell key={header} className="p-6 text-slate-300 font-medium group-hover:text-white transition-colors">
+                    <TableCell key={header} className="p-6 text-slate-700 dark:text-slate-300 font-medium group-hover:text-indigo-600 dark:group-hover:text-white transition-colors">
                       {renderTableCell(header, row[header.toLowerCase()] || row[header], widget.config)}
                     </TableCell>
                   ))}
