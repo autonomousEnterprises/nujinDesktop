@@ -1,33 +1,33 @@
 import { useState, useEffect } from "react";
-import { 
-  Metric, 
-  Text, 
+import {
+  Metric,
+  Text,
   Title,
   Subtitle,
-  LineChart, 
+  LineChart,
   BarChart,
   AreaChart,
   DonutChart,
-  Table, 
-  TableHead, 
-  TableRow, 
-  TableHeaderCell, 
-  TableBody, 
-  TableCell, 
+  Table,
+  TableHead,
+  TableRow,
+  TableHeaderCell,
+  TableBody,
+  TableCell,
   BadgeDelta,
   Badge,
   Flex,
   ProgressBar,
   ProgressCircle,
 } from "@tremor/react";
-import { 
-  TrendingUp, 
-  TrendingDown, 
-  Activity, 
-  DollarSign, 
-  Users, 
-  ShoppingCart, 
-  Clock, 
+import {
+  TrendingUp,
+  TrendingDown,
+  Activity,
+  DollarSign,
+  Users,
+  ShoppingCart,
+  Clock,
   CheckCircle2,
   AlertCircle,
   BarChart3,
@@ -63,12 +63,12 @@ const NEON_COLORS = ["cyan", "violet", "fuchsia", "blue", "emerald", "amber", "r
 
 const renderTableCell = (header: string, value: any, widgetConfig?: any) => {
   if (value === undefined || value === null) return "—";
-  
+
   const h = header.toLowerCase();
   if (h === "status" || h === "category") {
-    const color = (value.toLowerCase() === "active" || value.toLowerCase() === "vip" || value.toLowerCase() === "liquid staking") ? "emerald" : 
-                 (value.toLowerCase() === "new" || value.toLowerCase() === "bridge") ? "blue" : 
-                 (value.toLowerCase() === "lending") ? "violet" : "slate";
+    const color = (value.toLowerCase() === "active" || value.toLowerCase() === "vip" || value.toLowerCase() === "liquid staking") ? "emerald" :
+      (value.toLowerCase() === "new" || value.toLowerCase() === "bridge") ? "blue" :
+        (value.toLowerCase() === "lending") ? "violet" : "slate";
     return (
       <Badge color={color} size="xs" className="rounded-full px-2 py-0.5 font-bold uppercase text-[9px]">
         {value}
@@ -230,7 +230,7 @@ export default function WidgetRenderer({ widget, dashboardId, profile, onDataFet
     const ChartComponent = widgetType === "bar_chart" ? BarChart : (widgetType === "area_chart" || widgetType === "chart") ? AreaChart : LineChart;
     const index = widget.config?.index || "date";
     const series = data.series || [];
-    
+
     // Improved category detection
     let categories = widget.config?.categories;
     if (!categories && series.length > 0) {
@@ -319,12 +319,12 @@ export default function WidgetRenderer({ widget, dashboardId, profile, onDataFet
     const headers = data.headers || widget.config?.columns || [];
     return (
       <CardWrapper className="p-0 overflow-hidden">
-        <div className="p-8 border-b border-slate-800 bg-slate-900/20">
+        <div className="p-8 border-b border-slate-800">
           <Title className="text-white text-xl font-black tracking-tight">{widget.title}</Title>
         </div>
         <div className="overflow-x-auto flex-1">
           <Table>
-            <TableHead className="bg-slate-950/40">
+            <TableHead className="">
               <TableRow>
                 {headers.map((header: string) => (
                   <TableHeaderCell key={header} className="p-6 text-slate-500 font-black uppercase tracking-[0.2em] text-[10px] border-b border-slate-800">
