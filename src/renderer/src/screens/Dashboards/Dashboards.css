@@ -97,10 +97,12 @@
   font-weight: 900;
   color: var(--text-primary);
   letter-spacing: -0.04em;
-  background: var(--grad-neon);
+  background: linear-gradient(-45deg, #ee7752, #e73c7e, #23a6d5, #23d5ab);
+  background-size: 400% 400%;
+  animation: gradientShift 10s ease infinite;
   -webkit-background-clip: text;
   -webkit-text-fill-color: transparent;
-  filter: drop-shadow(0 2px 10px rgba(0, 242, 255, 0.2));
+  filter: drop-shadow(0 2px 10px rgba(231, 60, 126, 0.2));
 }
 
 .dashboard-actions {
@@ -177,11 +179,27 @@
 
 /* Metric Number Styling */
 .metric-value {
-  background: var(--grad-neon);
+  background: linear-gradient(-45deg, #ee7752, #e73c7e, #23a6d5, #23d5ab);
+  background-size: 400% 400%;
+  animation: gradientShift 8s ease infinite;
   -webkit-background-clip: text;
   -webkit-text-fill-color: transparent;
   display: inline-block;
   font-feature-settings: "tnum";
+}
+
+.text-gradient-animated {
+  background: linear-gradient(-45deg, #ee7752, #e73c7e, #23a6d5, #23d5ab);
+  background-size: 400% 400%;
+  animation: gradientShift 12s ease infinite;
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+}
+
+@keyframes gradientShift {
+  0% { background-position: 0% 50% }
+  50% { background-position: 100% 50% }
+  100% { background-position: 0% 50% }
 }
 
 /* Scrollbar refinement */

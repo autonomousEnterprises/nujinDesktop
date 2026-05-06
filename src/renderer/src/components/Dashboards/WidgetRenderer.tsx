@@ -241,7 +241,7 @@ export default function WidgetRenderer({ widget, dashboardId, profile, onDataFet
     return (
       <CardWrapper className="gap-2">
         <div className="mb-2">
-          <Title className="text-slate-900 dark:text-white text-xl font-black tracking-tight">{widget.title}</Title>
+          <Title className="text-gradient-animated text-xl font-black tracking-tight">{widget.title}</Title>
           {widget.description && <Subtitle className="text-slate-400 text-xs font-medium">{widget.description}</Subtitle>}
         </div>
         <div className="flex-1 min-h-[260px] w-full">
@@ -273,7 +273,7 @@ export default function WidgetRenderer({ widget, dashboardId, profile, onDataFet
   if (widgetType === "donut_chart" || widgetType === "donut") {
     return (
       <CardWrapper>
-        <Title className="text-slate-900 dark:text-white text-xl font-black tracking-tight mb-8">{widget.title}</Title>
+        <Title className="text-gradient-animated text-xl font-black tracking-tight mb-8">{widget.title}</Title>
         <div className="flex-1 flex items-center justify-center">
           <DonutChart
             className="h-64 w-full"
@@ -303,7 +303,7 @@ export default function WidgetRenderer({ widget, dashboardId, profile, onDataFet
             </Metric>
           </div>
           <ProgressCircle value={value} size="lg" color={color}>
-            <span className="text-sm font-black text-slate-900 dark:text-white">{value}%</span>
+            <span className="text-sm font-black text-gradient-animated">{value}%</span>
           </ProgressCircle>
         </Flex>
         <div className="mt-auto">
@@ -320,7 +320,7 @@ export default function WidgetRenderer({ widget, dashboardId, profile, onDataFet
     return (
       <CardWrapper className="p-0 overflow-hidden">
         <div className="p-8 border-b border-slate-200 dark:border-slate-800">
-          <Title className="text-slate-900 dark:text-white text-xl font-black tracking-tight">{widget.title}</Title>
+          <Title className="text-gradient-animated text-xl font-black tracking-tight">{widget.title}</Title>
         </div>
         <div className="overflow-x-auto flex-1">
           <Table>
