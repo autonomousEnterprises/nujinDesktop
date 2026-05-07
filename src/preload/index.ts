@@ -641,6 +641,8 @@ const hermesAPI = {
       ipcRenderer.invoke("get-dashboard", id, profile),
     save: (id: string, config: any, profile?: string): Promise<boolean> =>
       ipcRenderer.invoke("save-dashboard", id, config, profile),
+    delete: (id: string, profile?: string): Promise<boolean> =>
+      ipcRenderer.invoke("delete-dashboard", id, profile),
     getWidgetData: (
       dashboardId: string,
       dataSource: string,

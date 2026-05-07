@@ -110,6 +110,7 @@ import {
   listDashboards,
   getDashboard,
   saveDashboard,
+  deleteDashboard,
   getWidgetData,
   clearWidgetCache,
   watchDashboards,
@@ -693,6 +694,9 @@ function setupIPC(): void {
     "save-dashboard",
     (_event, id: string, config: any, profile?: string) =>
       saveDashboard(id, config, profile),
+  );
+  ipcMain.handle("delete-dashboard", (_event, id: string, profile?: string) =>
+    deleteDashboard(id, profile),
   );
   ipcMain.handle(
     "get-widget-data",

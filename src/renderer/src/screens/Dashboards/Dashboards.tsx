@@ -186,6 +186,24 @@ Be sharp, direct, and prioritised. Skip anything that's normal and unremarkable.
     setRefreshKey(k => k + 1);
   }, [currentDashboard, profile]);
 
+  const handleDeleteDashboard = useCallback(async (id: string) => {
+    console.log(`[Dashboards] Deleting dashboard: ${id}`);
+    const success = await window.hermesAPI.dashboards.delete(id, profile);
+    console.log(`[Dashboards] Deletion success: ${success}`);
+    if (success) {
+      // 1. Small delay
+      await new Promise(r => setTimeout(r, 100));
+      // 2. Refresh the list
+      await loadDashboardList();
+      // 3. If the deleted dashboard was the current one, switch to blank state
+      if (currentDashboard?.id === id) {
+        handleNewChat();
+      }
+    } else {
+      alert("Failed to delete dashboard. Check logs for details.");
+    }
+  }, [currentDashboard, profile, loadDashboardList, handleNewChat]);
+
   return (
     <div className={`dashboards-screen ${currentDashboard ? "split-view" : "full-chat"}`}>
       <aside className={`chat-sidebar ${isSidebarOpen ? "open" : "closed"}`}>
@@ -211,6 +229,7 @@ Be sharp, direct, and prioritised. Skip anything that's normal and unremarkable.
             if (onDashboardSelected) onDashboardSelected(id || null);
             switchDashboard(id);
           }}
+          onDeleteDashboard={handleDeleteDashboard}
         />
       </aside>
 

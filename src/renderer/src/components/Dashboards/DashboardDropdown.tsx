@@ -1,10 +1,11 @@
 import { useState, useRef, useEffect } from "react";
-import { ChevronDown, Check, Plus } from "lucide-react";
+import { ChevronDown, Check, Plus, Trash2 } from "lucide-react";
 
 interface DashboardDropdownProps {
   currentId: string;
   dashboardList: string[];
   onSwitch: (id: string) => void;
+  onDelete?: (id: string) => void;
   label?: string;
 }
 
@@ -12,6 +13,7 @@ export default function DashboardDropdown({
   currentId,
   dashboardList,
   onSwitch,
+  onDelete,
   label = "CONFIGURATOR"
 }: DashboardDropdownProps) {
   const [isOpen, setIsOpen] = useState(false);
@@ -92,23 +94,40 @@ export default function DashboardDropdown({
               {dashboardList.map(id => {
                 const isActive = currentId === id;
                 return (
-                  <button
+                  <div
                     key={id}
-                    onClick={() => {
-                      onSwitch(id);
-                      setIsOpen(false);
-                    }}
                     className={`
                       flex items-center justify-between px-3 py-2.5 rounded-xl text-sm font-medium
-                      transition-all duration-200
+                      transition-all duration-200 group
                       ${isActive 
                         ? 'bg-accent/10 text-accent' 
                         : 'text-secondary hover:bg-hover hover:text-primary'}
                     `}
+                    onClick={() => {
+                      onSwitch(id);
+                      setIsOpen(false);
+                    }}
                   >
-                    <span>{formatId(id)}</span>
-                    {isActive && <Check size={14} />}
-                  </button>
+                    <div className="flex items-center justify-between w-full">
+                      <span>{formatId(id)}</span>
+                      <div className="flex items-center gap-1">
+                        {onDelete && (
+                          <button
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              if (confirm(`Are you sure you want to delete "${formatId(id)}"?`)) {
+                                onDelete(id);
+                              }
+                            }}
+                            className="p-1.5 rounded-lg hover:bg-rose-500/20 text-rose-500 opacity-0 group-hover:opacity-100 transition-all duration-200"
+                          >
+                            <Trash2 size={12} />
+                          </button>
+                        )}
+                        {isActive && <Check size={14} />}
+                      </div>
+                    </div>
+                  </div>
                 );
               })}
             </div>

@@ -261,6 +261,26 @@ export function saveDashboard(id: string, config: DashboardConfig, profile?: str
   }
 }
 
+export function deleteDashboard(id: string, profile?: string): boolean {
+  const dir = getDashboardsDir(profile);
+  const path = join(dir, `${id}.json`);
+  console.log(`[Dashboards] Attempting to delete: ${path}`);
+  
+  if (!fs.existsSync(path)) {
+    console.warn(`[Dashboards] File not found: ${path}`);
+    return false;
+  }
+  
+  try {
+    fs.unlinkSync(path);
+    console.log(`[Dashboards] Deleted: ${id}`);
+    return true;
+  } catch (err) {
+    console.error(`Error deleting dashboard ${id}:`, err);
+    return false;
+  }
+}
+
 export async function getWidgetData(dashboardId: string, dataSource: string, profile?: string): Promise<any> {
   const dir = getDashboardsDir(profile);
   const hermesHome = getHermesHome(profile);

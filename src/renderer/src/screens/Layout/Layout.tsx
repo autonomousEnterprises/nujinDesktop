@@ -34,6 +34,7 @@ import {
   ChevronDown,
   ChevronRight,
   Plus,
+  Trash,
 } from "../../assets/icons";
 import type { LucideIcon } from "lucide-react";
 import { useI18n } from "../../components/useI18n";
@@ -163,6 +164,33 @@ function Layout(): React.JSX.Element {
     };
   }, [handleNewChat]);
 
+  const handleSwitchDashboard = useCallback((id: string | null) => {
+    setSelectedDashboardId(id);
+    if (id) setView("dashboards");
+  }, []);
+
+  const handleDeleteDashboard = useCallback(async (e: React.MouseEvent, id: string) => {
+    e.stopPropagation();
+    if (!window.confirm(`Are you sure you want to delete the dashboard "${id.split('_').map(w => w.charAt(0).toUpperCase() + w.slice(1)).join(' ')}"?`)) {
+      return;
+    }
+    console.log(`[Layout] Deleting dashboard: ${id}`);
+    const success = await window.hermesAPI.dashboards.delete(id, activeProfile);
+    console.log(`[Layout] Deletion success: ${success}`);
+    if (success) {
+      // 1. Small delay to ensure FS is settled
+      await new Promise(r => setTimeout(r, 100));
+      // 2. Refresh local list
+      await loadDashboardList();
+      // 3. Clear selection if needed
+      if (selectedDashboardId === id) {
+        setSelectedDashboardId(null);
+      }
+    } else {
+      alert("Failed to delete dashboard. Check logs for details.");
+    }
+  }, [selectedDashboardId, activeProfile, loadDashboardList]);
+
   const handleSelectProfile = useCallback((name: string) => {
     setActiveProfile(name);
     setMessages([]);
@@ -229,17 +257,26 @@ function Layout(): React.JSX.Element {
                     <Plus size={12} />
                     <span>New Dashboard</span>
                   </button>
-                  {dashboardList.map(id => (
-                    <button
+                   {dashboardList.map(id => (
+                    <div 
                       key={id}
-                      className={`sidebar-sub-nav-item ${selectedDashboardId === id ? "active" : ""}`}
+                      className={`sidebar-sub-nav-item group/item ${selectedDashboardId === id ? "active" : ""}`}
                       onClick={() => {
                         setSelectedDashboardId(id);
                         setView("dashboards");
                       }}
                     >
-                      {id.split('_').map(w => w.charAt(0).toUpperCase() + w.slice(1)).join(' ')}
-                    </button>
+                      <span className="flex-1 truncate">
+                        {id.split('_').map(w => w.charAt(0).toUpperCase() + w.slice(1)).join(' ')}
+                      </span>
+                      <button
+                        className="p-1 opacity-0 group-hover/item:opacity-100 hover:text-red-500 transition-all"
+                        onClick={(e) => handleDeleteDashboard(e, id)}
+                        title="Delete Dashboard"
+                      >
+                        <Trash size={12} />
+                      </button>
+                    </div>
                   ))}
                 </div>
               )}

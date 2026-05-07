@@ -254,7 +254,7 @@ interface ModelGroup {
 
 import { PROVIDERS } from "../../constants";
 import { useI18n } from "../../components/useI18n";
-// import DashboardDropdown from "../../components/Dashboards/DashboardDropdown";
+import DashboardDropdown from "../../components/Dashboards/DashboardDropdown";
 interface DashboardConfig {
   id: string;
   title: string;
@@ -272,6 +272,7 @@ interface DashboardChatProps {
   dashboardContext?: DashboardConfig;
   dashboardList?: string[];
   onSwitchDashboard?: (id: string) => void;
+  onDeleteDashboard?: (id: string) => void;
 }
 
 export interface DashboardChatHandle {
@@ -289,6 +290,7 @@ const DashboardChat = memo(forwardRef<DashboardChatHandle, DashboardChatProps>(f
   dashboardContext,
   dashboardList,
   onSwitchDashboard,
+  onDeleteDashboard,
 }, ref): React.JSX.Element {
   const { t } = useI18n();
   const [input, setInput] = useState("");
@@ -972,7 +974,15 @@ const DashboardChat = memo(forwardRef<DashboardChatHandle, DashboardChatProps>(f
       <div className="chat-header">
         <div className="chat-header-left">
           <div className="chat-header-title">
-            {sessionId ? (
+            {dashboardContext && dashboardList && onSwitchDashboard ? (
+              <DashboardDropdown 
+                currentId={dashboardContext.id}
+                dashboardList={dashboardList}
+                onSwitch={onSwitchDashboard}
+                onDelete={onDeleteDashboard}
+                label="CONFIGURATOR"
+              />
+            ) : sessionId ? (
               t("chat.sessionTitle", { id: sessionId.slice(-6) })
             ) : (
               "Dashboard Configurator"
