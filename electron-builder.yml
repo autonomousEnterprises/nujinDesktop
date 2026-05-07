@@ -43,7 +43,7 @@ linux:
   category: Utility
   synopsis: Onchain Sovereignty
   description: >-
-    nujinDesktop is a native desktop app for onchain Sovereignty — a self-improving AI agent with tool use, multi-platform
+    nujinDesktop is a native desktop app for Sovereignty onchain — a self-improving AI agent with tool use, multi-platform
     messaging, and a closed learning loop.
 appImage:
   artifactName: ${name}-${version}.${ext}
