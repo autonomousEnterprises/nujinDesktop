@@ -431,7 +431,9 @@ export default function WidgetRenderer({ widget, dashboardId, profile, onDataFet
       return String(aVal).localeCompare(String(bVal)) * order;
     });
 
-    const handleSort = (key: string) => {
+    const handleSort = (key: string, e: React.MouseEvent) => {
+      // Prevent the click from bubbling up to CardWrapper (which would trigger summarize)
+      e.stopPropagation();
       setSortConfig(prev => {
         if (prev.key === key) {
           if (prev.direction === "asc") return { key, direction: "desc" };
@@ -456,7 +458,7 @@ export default function WidgetRenderer({ widget, dashboardId, profile, onDataFet
                     <TableHeaderCell 
                       key={header} 
                       className="p-6 cursor-pointer hover:bg-slate-50 dark:hover:bg-slate-800/50 transition-colors group"
-                      onClick={() => handleSort(header)}
+                      onClick={(e) => handleSort(header, e)}
                     >
                       <div className="flex items-center gap-2">
                         <span className="text-slate-500 font-black uppercase tracking-[0.2em] text-[10px]">
