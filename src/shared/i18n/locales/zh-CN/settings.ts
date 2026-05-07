@@ -4,6 +4,7 @@ export default {
     hermesAgent: "nujinAI",
     appearance: "外观",
     credentialPool: "凭据池",
+    onchainSkills: "Nujin Skills",
   },
   theme: {
     label: "主题",
@@ -50,6 +51,7 @@ export default {
   emptyLog: "(空)",
   updating: "更新中...",
   updateEngine: "更新引擎",
+  updateSkills: "更新 Nujin Skills",
   latestVersion: "已是最新版本",
   runningDiagnosis: "运行中...",
   runDiagnosis: "运行诊断",

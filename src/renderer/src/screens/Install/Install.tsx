@@ -19,7 +19,7 @@ function Install({ onComplete, onFailed }: InstallProps): React.JSX.Element {
   const { t } = useI18n();
   const [progress, setProgress] = useState<InstallProgress>({
     step: 0,
-    totalSteps: 7,
+    totalSteps: 8,
     title: t("install.preparing"),
     detail: t("install.startingInstall"),
     log: "",
@@ -98,7 +98,7 @@ function Install({ onComplete, onFailed }: InstallProps): React.JSX.Element {
                 setFailed(null);
                 setProgress({
                   step: 0,
-                  totalSteps: 7,
+                  totalSteps: 8,
                   title: t("install.preparing"),
                   detail: t("install.startingInstall"),
                   log: "",

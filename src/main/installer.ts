@@ -15,12 +15,16 @@ export const HERMES_PYTHON = join(HERMES_VENV, "bin", "python");
 export const HERMES_SCRIPT = join(HERMES_REPO, "hermes");
 export const HERMES_ENV_FILE = join(HERMES_HOME, ".env");
 export const HERMES_CONFIG_FILE = join(HERMES_HOME, "config.yaml");
+export const NUJIN_SKILLS_REPO =
+  "https://github.com/AutonomousEnterprises/nujinSkills.git";
+export const NUJIN_SKILLS_DIR = join(HERMES_HOME, "skills", "nujinSkills");
 
 export interface InstallStatus {
   installed: boolean;
   configured: boolean;
   hasApiKey: boolean;
   verified: boolean;
+  skillsInstalled: boolean;
 }
 
 export interface InstallProgress {
@@ -89,6 +93,7 @@ export function checkInstallStatus(): InstallStatus {
       configured: true,
       hasApiKey: true,
       verified: true,
+      skillsInstalled: true,
     };
   }
 
@@ -98,8 +103,9 @@ export function checkInstallStatus(): InstallStatus {
   // by the renderer after the main UI is mounted.
   const installed = existsSync(HERMES_PYTHON) && existsSync(HERMES_SCRIPT);
   const configured = existsSync(HERMES_ENV_FILE);
+  const skillsInstalled = existsSync(NUJIN_SKILLS_DIR);
   let hasApiKey = false;
-  const verified = installed;
+  const verified = installed && skillsInstalled;
 
   // Local/custom providers don't need an API key
   try {
@@ -135,7 +141,7 @@ export function checkInstallStatus(): InstallStatus {
     }
   }
 
-  return { installed, configured, hasApiKey, verified };
+  return { installed, configured, hasApiKey, verified, skillsInstalled };
 }
 
 // Lazy background verification: actually invoke Python to confirm the
@@ -144,7 +150,12 @@ let _verifyCache: { ok: boolean; ts: number } | null = null;
 const VERIFY_TTL_MS = 5 * 60 * 1000;
 
 export async function verifyInstall(): Promise<boolean> {
-  if (!existsSync(HERMES_PYTHON) || !existsSync(HERMES_SCRIPT)) return false;
+  if (
+    !existsSync(HERMES_PYTHON) ||
+    !existsSync(HERMES_SCRIPT) ||
+    !existsSync(NUJIN_SKILLS_DIR)
+  )
+    return false;
   if (_verifyCache && Date.now() - _verifyCache.ts < VERIFY_TTL_MS) {
     return _verifyCache.ok;
   }
@@ -219,6 +230,134 @@ export async function getHermesVersion(): Promise<string | null> {
 
 export function clearVersionCache(): void {
   _cachedVersion = null;
+  _cachedSkillsVersion = null;
+}
+
+let _cachedSkillsVersion: string | null = null;
+let _skillsVersionFetching = false;
+
+export async function getSkillsVersion(): Promise<string | null> {
+  if (_cachedSkillsVersion !== null) return _cachedSkillsVersion;
+  if (!existsSync(NUJIN_SKILLS_DIR)) return null;
+  if (_skillsVersionFetching) {
+    return new Promise((resolve) => {
+      const check = setInterval(() => {
+        if (!_skillsVersionFetching) {
+          clearInterval(check);
+          resolve(_cachedSkillsVersion);
+        }
+      }, 100);
+    });
+  }
+
+  _skillsVersionFetching = true;
+  return new Promise((resolve) => {
+    // Try to fetch in the background to get latest upstream info
+    const fetchProc = spawn("git", ["fetch"], {
+      cwd: NUJIN_SKILLS_DIR,
+      env: { ...process.env, PATH: getEnhancedPath() },
+    });
+
+    fetchProc.on("close", () => {
+      try {
+        const localHash = execSync("git rev-parse --short HEAD", {
+          cwd: NUJIN_SKILLS_DIR,
+          env: { ...process.env, PATH: getEnhancedPath() },
+        })
+          .toString()
+          .trim();
+
+        let behindCount = 0;
+        try {
+          const behind = execSync("git rev-list --count HEAD..@{u}", {
+            cwd: NUJIN_SKILLS_DIR,
+            env: { ...process.env, PATH: getEnhancedPath() },
+          })
+            .toString()
+            .trim();
+          behindCount = parseInt(behind) || 0;
+        } catch {
+          /* upstream might not be set */
+        }
+
+        let v = localHash;
+        if (behindCount > 0) {
+          v += ` — Update available: ${behindCount} commits behind`;
+        }
+        _cachedSkillsVersion = v;
+        resolve(v);
+      } catch (err) {
+        console.error("[SkillsVersion] Error:", err);
+        resolve(null);
+      } finally {
+        _skillsVersionFetching = false;
+      }
+    });
+
+    fetchProc.on("error", (err) => {
+      console.error("[SkillsVersion] Fetch Error:", err);
+      _skillsVersionFetching = false;
+      resolve(null);
+    });
+  });
+}
+
+export async function runSkillsUpdate(
+  onProgress: (progress: InstallProgress) => void,
+): Promise<void> {
+  if (!existsSync(NUJIN_SKILLS_DIR)) {
+    throw new Error("nujinSkills is not installed.");
+  }
+
+  let log = "";
+  function emit(text: string): void {
+    log += text;
+    onProgress({
+      step: 1,
+      totalSteps: 1,
+      title: "Updating nujinSkills",
+      detail: text.trim().slice(0, 120),
+      log,
+    });
+  }
+
+  emit("Updating nujinSkills repository...\n");
+
+  return new Promise((resolve, reject) => {
+    const updateCmd = "git pull && npm install";
+    const proc = spawn("bash", ["-c", updateCmd], {
+      cwd: NUJIN_SKILLS_DIR,
+      env: {
+        ...process.env,
+        PATH: getEnhancedPath(),
+        HOME: homedir(),
+        TERM: "dumb",
+      },
+      stdio: ["ignore", "pipe", "pipe"],
+    });
+
+    proc.stdout?.on("data", (data: Buffer) => {
+      emit(stripAnsi(data.toString()));
+    });
+
+    proc.stderr?.on("data", (data: Buffer) => {
+      emit(stripAnsi(data.toString()));
+    });
+
+    proc.on("close", (code) => {
+      if (code === 0) {
+        emit("\nSkills update complete!\n");
+        _cachedSkillsVersion = null; // Invalidate cache
+        resolve();
+      } else {
+        reject(new Error(`Skills update failed (exit code ${code}).`));
+      }
+    });
+
+    proc.on("error", (err) => {
+      reject(new Error(`Failed to run skills update: ${err.message}`));
+    });
+  });
 }
 
 export function runHermesDoctor(): string {
@@ -428,13 +567,18 @@ const STAGE_MARKERS: { pattern: RegExp; step: number; title: string }[] = [
     step: 7,
     title: "Finishing setup",
   },
+  {
+    pattern: /Installing Onchain Skills/i,
+    step: 8,
+    title: "Installing Onchain Skills",
+  },
 ];
 
 export async function runInstall(
   onProgress: (progress: InstallProgress) => void,
   parentWindow?: BrowserWindow | null,
 ): Promise<void> {
-  const totalSteps = 7;
+  const totalSteps = 8;
   let log = "";
   let currentStep = 1;
   let currentTitle = "Starting installation...";
@@ -486,6 +630,10 @@ export async function runInstall(
       const installCmd = [
         shellProfile ? `source "${shellProfile}" 2>/dev/null;` : "",
         "curl -fsSL https://raw.githubusercontent.com/NousResearch/hermes-agent/main/scripts/install.sh | bash -s -- --skip-setup",
+        `&& echo "Installing Onchain Skills..."`,
+        `&& mkdir -p "$(dirname "${NUJIN_SKILLS_DIR}")"`,
+        `&& (if [ ! -d "${NUJIN_SKILLS_DIR}" ]; then git clone "${NUJIN_SKILLS_REPO}" "${NUJIN_SKILLS_DIR}"; else cd "${NUJIN_SKILLS_DIR}" && git pull; fi)`,
+        `&& cd "${NUJIN_SKILLS_DIR}" && npm install`,
       ].join(" ");
 
       const basePath = getEnhancedPath();

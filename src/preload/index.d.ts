@@ -5,6 +5,7 @@ interface InstallStatus {
   configured: boolean;
   hasApiKey: boolean;
   verified: boolean;
+  skillsInstalled: boolean;
 }
 
 interface InstallProgress {
@@ -29,6 +30,9 @@ interface HermesAPI {
   refreshHermesVersion: () => Promise<string | null>;
   runHermesDoctor: () => Promise<string>;
   runHermesUpdate: () => Promise<{ success: boolean; error?: string }>;
+  getSkillsVersion: () => Promise<string | null>;
+  refreshSkillsVersion: () => Promise<string | null>;
+  runSkillsUpdate: () => Promise<{ success: boolean; error?: string }>;
 
   // OpenClaw migration
   checkOpenClaw: () => Promise<{ found: boolean; path: string | null }>;

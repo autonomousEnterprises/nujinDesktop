@@ -4,6 +4,7 @@ export default {
     hermesAgent: "nujinAI",
     appearance: "Appearance",
     credentialPool: "Credential Pool",
+    onchainSkills: "Nujin Skills",
   },
   theme: {
     label: "Theme",
@@ -50,6 +51,7 @@ export default {
   emptyLog: "(empty)",
   updating: "Updating...",
   updateEngine: "Update Engine",
+  updateSkills: "Update Nujin Skills",
   latestVersion: "Already up to date",
   runningDiagnosis: "Running diagnosis...",
   runDiagnosis: "Run Diagnosis",

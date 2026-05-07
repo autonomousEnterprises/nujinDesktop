@@ -40,6 +40,16 @@ function Settings({ profile }: { profile?: string }): React.JSX.Element {
     "success" | "error" | null
   >(null);
 
+  // nujinSkills state
+  const [skillsVersion, setSkillsVersion] = useState<string | null>(null);
+  const [skillsUpdating, setSkillsUpdating] = useState(false);
+  const [skillsUpdateResult, setSkillsUpdateResult] = useState<string | null>(
+    null,
+  );
+  const [skillsUpdateResultType, setSkillsUpdateResultType] = useState<
+    "success" | "error" | null
+  >(null);
+
   // OpenClaw migration — initialize from localStorage cache
   const cachedClaw = getCachedOpenClaw();
   const [openclawFound, setOpenclawFound] = useState(
@@ -126,13 +136,12 @@ function Settings({ profile }: { profile?: string }): React.JSX.Element {
       window.hermesAPI.checkOpenClaw().then((claw) => {
         setOpenclawFound(claw.found);
         setOpenclawPath(claw.path);
-        try {
-          localStorage.setItem("hermes-openclaw-cache", JSON.stringify(claw));
-        } catch {
-          /* ignore */
-        }
       });
     }
+
+    window.hermesAPI.getSkillsVersion().then((v) => {
+      setSkillsVersion(v);
+    });
   }, [profile]);
 
   useEffect(() => {
@@ -270,6 +279,12 @@ function Settings({ profile }: { profile?: string }): React.JSX.Element {
     });
   }
 
+  function refreshSkillsVersion(): void {
+    window.hermesAPI.refreshSkillsVersion().then((v) => {
+      setSkillsVersion(v);
+    });
+  }
+
   async function handleUpdateHermes(): Promise<void> {
     setUpdating(true);
     setUpdateResult(null);
@@ -285,7 +300,21 @@ function Settings({ profile }: { profile?: string }): React.JSX.Element {
     }
   }
 
-  // Parse "Hermes Agent v0.7.0 (2026.4.3) Project: ... Python: 3.11.15 OpenAI SDK: 2.30.0 Update available: ..."
+  async function handleUpdateSkills(): Promise<void> {
+    setSkillsUpdating(true);
+    setSkillsUpdateResult(null);
+    const result = await window.hermesAPI.runSkillsUpdate();
+    setSkillsUpdating(false);
+    if (result.success) {
+      setSkillsUpdateResult(t("settings.updateSuccess"));
+      setSkillsUpdateResultType("success");
+      refreshSkillsVersion();
+    } else {
+      setSkillsUpdateResult(result.error || t("settings.updateFailed"));
+      setSkillsUpdateResultType("error");
+    }
+  }
+
   const parsedVersion = (() => {
     if (!hermesVersion) return null;
     const v = hermesVersion;
@@ -296,6 +325,15 @@ function Settings({ profile }: { profile?: string }): React.JSX.Element {
     const updateMatch = v.match(/Update available:\s*(.+?)(?:\s*—|$)/);
     const updateInfo = updateMatch?.[1]?.trim() || null;
     return { version, date, python, sdk, updateInfo };
+  })();
+
+  const parsedSkillsVersion = (() => {
+    if (!skillsVersion) return null;
+    const v = skillsVersion;
+    const version = v.split(" — ")[0];
+    const updateMatch = v.match(/Update available:\s*(.+?)(?:\s*—|$)/);
+    const updateInfo = updateMatch?.[1]?.trim() || null;
+    return { version, updateInfo };
   })();
 
   return (
@@ -431,6 +469,66 @@ function Settings({ profile }: { profile?: string }): React.JSX.Element {
           )}
           {dumpOutput && (
             <pre className="settings-hermes-doctor">{dumpOutput}</pre>
+          )}
+        </div>
+      </div>
+
+      <div className="settings-section">
+        <div className="settings-section-title">
+          {t("settings.sections.onchainSkills")}
+        </div>
+        <div className="settings-hermes-info">
+          <div className="settings-hermes-row">
+            <div className="settings-hermes-detail">
+              <span className="settings-hermes-label">
+                {t("common.version")}
+              </span>
+              {skillsVersion === null ? (
+                <span className="skeleton skeleton-sm" />
+              ) : (
+                <span className="settings-hermes-value">
+                  {parsedSkillsVersion?.version || t("settings.notDetected")}
+                </span>
+              )}
+            </div>
+            <div className="settings-hermes-detail">
+              <span className="settings-hermes-label">{t("common.home")}</span>
+              <span className="settings-hermes-value settings-hermes-path">
+                ~/.hermes/skills/nujinSkills
+              </span>
+            </div>
+          </div>
+          {parsedSkillsVersion?.updateInfo && (
+            <div className="settings-hermes-update-badge">
+              {parsedSkillsVersion.updateInfo}
+            </div>
+          )}
+          <div className="settings-hermes-actions">
+            {parsedSkillsVersion?.updateInfo ? (
+              <button
+                className="btn btn-primary"
+                onClick={handleUpdateSkills}
+                disabled={skillsUpdating}
+              >
+                {skillsUpdating
+                  ? t("settings.updating")
+                  : t("settings.updateSkills")}
+              </button>
+            ) : (
+              <button className="btn btn-secondary" disabled>
+                {t("settings.latestVersion")}
+              </button>
+            )}
+            <button className="btn btn-secondary" onClick={refreshSkillsVersion}>
+              {t("settings.refresh")}
+            </button>
+          </div>
+          {skillsUpdateResult && (
+            <div
+              className={`settings-hermes-result ${skillsUpdateResultType || "error"}`}
+            >
+              {skillsUpdateResult}
+            </div>
           )}
         </div>
       </div>

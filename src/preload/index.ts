@@ -7,6 +7,7 @@ const hermesAPI = {
     installed: boolean;
     configured: boolean;
     hasApiKey: boolean;
+    skillsInstalled: boolean;
   }> => ipcRenderer.invoke("check-install"),
 
   verifyInstall: (): Promise<boolean> => ipcRenderer.invoke("verify-install"),
@@ -49,6 +50,12 @@ const hermesAPI = {
     ipcRenderer.invoke("run-hermes-doctor"),
   runHermesUpdate: (): Promise<{ success: boolean; error?: string }> =>
     ipcRenderer.invoke("run-hermes-update"),
+  getSkillsVersion: (): Promise<string | null> =>
+    ipcRenderer.invoke("get-skills-version"),
+  refreshSkillsVersion: (): Promise<string | null> =>
+    ipcRenderer.invoke("refresh-skills-version"),
+  runSkillsUpdate: (): Promise<{ success: boolean; error?: string }> =>
+    ipcRenderer.invoke("run-skills-update"),
 
   // OpenClaw migration
   checkOpenClaw: (): Promise<{ found: boolean; path: string | null }> =>

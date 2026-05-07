@@ -7,6 +7,7 @@ import {
   HERMES_PYTHON,
   HERMES_SCRIPT,
   HERMES_REPO,
+  NUJIN_SKILLS_DIR,
   getEnhancedPath,
 } from "./installer";
 import { profileHome } from "./utils";
@@ -62,52 +63,79 @@ function parseSkillFrontmatter(content: string): {
 }
 
 /**
- * Walk the skills directory to find all installed skills.
- * Structure: skills/<category>/<skill-name>/SKILL.md
+ * Helper to scan a directory for skills and add them to the list.
  */
-export function listInstalledSkills(profile?: string): InstalledSkill[] {
-  const skillsDir = join(profileHome(profile), "skills");
-  if (!existsSync(skillsDir)) return [];
-
-  const skills: InstalledSkill[] = [];
+function scanSkills(
+  skillsDir: string,
+  category: string,
+  skills: InstalledSkill[],
+): void {
+  if (!existsSync(skillsDir)) return;
 
   try {
-    const categories = readdirSync(skillsDir);
+    const entries = readdirSync(skillsDir);
+    for (const entry of entries) {
+      const entryPath = join(skillsDir, entry);
+      if (!statSync(entryPath).isDirectory()) continue;
 
-    for (const category of categories) {
-      const categoryPath = join(skillsDir, category);
-      if (!statSync(categoryPath).isDirectory()) continue;
+      const skillFile = join(entryPath, "SKILL.md");
+      if (!existsSync(skillFile)) continue;
 
-      const entries = readdirSync(categoryPath);
-      for (const entry of entries) {
-        const entryPath = join(categoryPath, entry);
-        if (!statSync(entryPath).isDirectory()) continue;
+      try {
+        const content = readFileSync(skillFile, "utf-8").slice(0, 4000);
+        const meta = parseSkillFrontmatter(content);
 
-        const skillFile = join(entryPath, "SKILL.md");
-        if (!existsSync(skillFile)) continue;
-
-        try {
-          const content = readFileSync(skillFile, "utf-8").slice(0, 4000);
-          const meta = parseSkillFrontmatter(content);
-
-          skills.push({
-            name: meta.name || entry,
-            category,
-            description: meta.description || "",
-            path: entryPath,
-          });
-        } catch {
-          skills.push({
-            name: entry,
-            category,
-            description: "",
-            path: entryPath,
-          });
-        }
+        skills.push({
+          name: meta.name || entry,
+          category,
+          description: meta.description || "",
+          path: entryPath,
+        });
+      } catch {
+        skills.push({
+          name: entry,
+          category,
+          description: "",
+          path: entryPath,
+        });
       }
     }
   } catch {
     // ignore
+  }
+}
+
+/**
+ * Walk the skills directory to find all installed skills.
+ * Structure: skills/<category>/<skill-name>/SKILL.md
+ * Also includes skills from the nujinSkills repository.
+ */
+export function listInstalledSkills(profile?: string): InstalledSkill[] {
+  const skills: InstalledSkill[] = [];
+
+  // 1. Scan standard profile skills (grouped by category)
+  const profileSkillsDir = join(profileHome(profile), "skills");
+  if (existsSync(profileSkillsDir)) {
+    try {
+      const categories = readdirSync(profileSkillsDir);
+      for (const category of categories) {
+        const categoryPath = join(profileSkillsDir, category);
+        // Special case: don't treat nujinSkills itself as a category of skills here,
+        // we handle its internal skills separately.
+        if (category === "nujinSkills") continue;
+        if (!statSync(categoryPath).isDirectory()) continue;
+
+        scanSkills(categoryPath, category, skills);
+      }
+    } catch {
+      // ignore
+    }
+  }
+
+  // 2. Scan nujinSkills repository (category: "Nujin")
+  const nujinInternalSkillsDir = join(NUJIN_SKILLS_DIR, "skills");
+  if (existsSync(nujinInternalSkillsDir)) {
+    scanSkills(nujinInternalSkillsDir, "Nujin", skills);
   }
 
   return skills.sort(

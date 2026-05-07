@@ -23,6 +23,8 @@ import {
   runHermesBackup,
   runHermesImport,
   runHermesDump,
+  getSkillsVersion,
+  runSkillsUpdate,
   listMcpServers,
   discoverMemoryProviders,
   readLogs,
@@ -222,6 +224,22 @@ function setupIPC(): void {
   ipcMain.handle("run-hermes-update", async (event) => {
     try {
       await runHermesUpdate((progress: InstallProgress) => {
+        event.sender.send("install-progress", progress);
+      });
+      return { success: true };
+    } catch (err) {
+      return { success: false, error: (err as Error).message };
+    }
+  });
+
+  ipcMain.handle("get-skills-version", async () => getSkillsVersion());
+  ipcMain.handle("refresh-skills-version", async () => {
+    clearVersionCache();
+    return getSkillsVersion();
+  });
+  ipcMain.handle("run-skills-update", async (event) => {
+    try {
+      await runSkillsUpdate((progress: InstallProgress) => {
         event.sender.send("install-progress", progress);
       });
       return { success: true };

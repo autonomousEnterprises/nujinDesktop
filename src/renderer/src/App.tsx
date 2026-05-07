@@ -41,7 +41,7 @@ function App(): React.JSX.Element {
         }
       } else {
         const status = await window.hermesAPI.checkInstall();
-        if (!status.installed) {
+        if (!status.installed || !status.skillsInstalled) {
           next = "welcome";
         } else if (!status.hasApiKey) {
           next = "setup";
