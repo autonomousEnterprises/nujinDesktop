@@ -8,6 +8,93 @@ import { promisify } from "util";
 
 const execFileAsync = promisify(execFile);
 
+// ─── Script Execution Cache & Deduplication ─────────────────────────────────
+// Prevents N widgets pointing at the same script from spawning N Python
+// processes concurrently (which causes rate-limit failures, timeouts, and
+// the "some widgets work / some don't" symptom).
+//
+// - inFlightScripts: if a script is already running, attach to that promise
+// - scriptResultCache: reuse the last result for CACHE_TTL_MS after a run
+
+const CACHE_TTL_MS = 15_000; // 15 seconds
+
+interface CacheEntry {
+  data: any;
+  timestamp: number;
+}
+
+const scriptResultCache = new Map<string, CacheEntry>();
+const inFlightScripts = new Map<string, Promise<any>>();
+
+/** Invalidate a specific cache entry (e.g., on manual Refresh). */
+export function invalidateWidgetCache(scriptPath: string): void {
+  scriptResultCache.delete(scriptPath);
+}
+
+/** Wipe the entire cache (used when switching dashboards / profiles). */
+export function clearWidgetCache(): void {
+  scriptResultCache.clear();
+  // Note: in-flight promises finish naturally; we just won't cache their result.
+}
+
+/**
+ * Resolve the best available Python interpreter for running dashboard scripts.
+ * Priority: Hermes venv → system python3 → python
+ * Returns the resolved interpreter path/name.
+ */
+async function resolvePythonInterpreter(): Promise<string> {
+  if (fs.existsSync(HERMES_PYTHON)) return HERMES_PYTHON;
+  // Hermes venv not present - fall back to system python
+  return "python3";
+}
+
+/**
+ * Execute a Python script and return its parsed JSON stdout.
+ * Tries the Hermes venv first; on ModuleNotFoundError retries with system python3.
+ */
+async function executeScript(scriptPath: string, cwd: string): Promise<any> {
+  const env = { ...process.env, PYTHONIOENCODING: "utf-8" };
+
+  const tryRun = async (interpreter: string) => {
+    const { stdout } = await execFileAsync(interpreter, [scriptPath], {
+      timeout: 60_000,
+      env,
+      cwd,
+    });
+    return JSON.parse(stdout);
+  };
+
+  const primaryInterpreter = await resolvePythonInterpreter();
+
+  try {
+    return await tryRun(primaryInterpreter);
+  } catch (err: any) {
+    const stderr: string = err.stderr?.toString?.() || "";
+    const isModuleError = stderr.includes("ModuleNotFoundError") || stderr.includes("No module named");
+
+    // If the Hermes venv is missing a package, retry with system python3
+    if (isModuleError && primaryInterpreter === HERMES_PYTHON) {
+      console.warn(`[WidgetData] Hermes venv missing module, retrying with system python3: ${scriptPath}`);
+      try {
+        return await tryRun("python3");
+      } catch (fallbackErr: any) {
+        const fbStderr = fallbackErr.stderr?.toString?.() || "";
+        const fbStdout = fallbackErr.stdout?.toString?.() || "";
+        const detail = fbStderr.trim() || fallbackErr.message || "Unknown error";
+        console.error(`[WidgetData] Fallback also failed: ${scriptPath}\n  stderr: ${fbStderr}\n  stdout: ${fbStdout.slice(0, 200)}`);
+        return { error: "Script execution failed", details: detail.slice(0, 300) };
+      }
+    }
+
+    // Other errors (syntax error, network issue, JSON parse, etc.)
+    const stdout = err.stdout?.toString?.() || "";
+    const code = err.code ?? err.status ?? "?";
+    console.error(`[WidgetData] Script failed: ${scriptPath}\n  exit=${code} signal=${err.signal}\n  stderr: ${stderr}\n  stdout: ${stdout.slice(0, 200)}`);
+    const detail = stderr.trim() || err.message || "Unknown error";
+    return { error: "Script execution failed", details: detail.slice(0, 300) };
+  }
+}
+
 export interface WidgetConfig {
   id: string;
   type: "metric" | "line_chart" | "bar_chart" | "area_chart" | "donut_chart" | "table" | "list" | "sparkline" | "progress";
@@ -176,41 +263,62 @@ export function saveDashboard(id: string, config: DashboardConfig, profile?: str
 
 export async function getWidgetData(dashboardId: string, dataSource: string, profile?: string): Promise<any> {
   const dir = getDashboardsDir(profile);
-  const path = join(dir, dataSource);
   const hermesHome = getHermesHome(profile);
-  
-  // Handle Script-Driven Data (e.g. .py scripts)
+
+  // ── Script-Driven Data (.py) ──────────────────────────────────────────────
   if (dataSource.endsWith(".py")) {
-    const fullScriptPath = dataSource.startsWith("/") ? dataSource : join(hermesHome, "nujin", dataSource);
+    const fullScriptPath = dataSource.startsWith("/")
+      ? dataSource
+      : join(hermesHome, "nujin", dataSource);
+
     if (!fs.existsSync(fullScriptPath)) return null;
 
-    try {
-      // Execute Python script from the Hermes environment
-      const { stdout } = await execFileAsync(HERMES_PYTHON, [fullScriptPath], {
-        timeout: 60000,
-        env: { ...process.env, PYTHONIOENCODING: "utf-8" },
-        cwd: join(hermesHome, "nujin"),
-      });
-      return JSON.parse(stdout);
-    } catch (err: any) {
-      const stderr = err.stderr?.toString?.() || "";
-      const stdout = err.stdout?.toString?.() || "";
-      const code = err.code ?? err.status ?? "?";
-      console.error(`[WidgetData] Script failed: ${fullScriptPath}\n  exit=${code} signal=${err.signal}\n  stderr: ${stderr}\n  stdout: ${stdout.slice(0, 200)}`);
-      // Show the most useful part: stderr if available, otherwise the generic message
-      const detail = stderr.trim() || err.message || "Unknown error";
-      return { error: "Script execution failed", details: detail.slice(0, 300) };
+    const cacheKey = fullScriptPath;
+
+    // 1. Return cached result if still fresh
+    const cached = scriptResultCache.get(cacheKey);
+    if (cached && Date.now() - cached.timestamp < CACHE_TTL_MS) {
+      console.log(`[WidgetData] Cache hit: ${fullScriptPath}`);
+      return cached.data;
     }
+
+    // 2. Attach to an already-running execution (deduplication)
+    const inflight = inFlightScripts.get(cacheKey);
+    if (inflight) {
+      console.log(`[WidgetData] Joining in-flight: ${fullScriptPath}`);
+      return inflight;
+    }
+
+    // 3. Start a fresh execution
+    console.log(`[WidgetData] Executing: ${fullScriptPath}`);
+    const scriptDir = join(hermesHome, "nujin");
+    const promise = executeScript(fullScriptPath, scriptDir)
+      .then((result) => {
+        // Only cache successful results (not error objects)
+        if (!result?.error) {
+          scriptResultCache.set(cacheKey, { data: result, timestamp: Date.now() });
+        }
+        inFlightScripts.delete(cacheKey);
+        return result;
+      })
+      .catch((err) => {
+        inFlightScripts.delete(cacheKey);
+        throw err;
+      });
+
+    inFlightScripts.set(cacheKey, promise);
+    return promise;
   }
 
-  // Handle Static JSON Data
-  if (!fs.existsSync(path)) return null;
-  
+  // ── Static JSON Data ─────────────────────────────────────────────────────
+  const jsonPath = join(dir, dataSource);
+  if (!fs.existsSync(jsonPath)) return null;
+
   try {
-    const content = fs.readFileSync(path, "utf-8");
+    const content = fs.readFileSync(jsonPath, "utf-8");
     return JSON.parse(content);
   } catch (err) {
-    console.error(`Error reading widget data ${dataSource}:`, err);
+    console.error(`[WidgetData] Error reading static data ${dataSource}:`, err);
     return null;
   }
 }

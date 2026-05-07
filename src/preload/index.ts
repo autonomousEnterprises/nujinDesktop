@@ -647,6 +647,9 @@ const hermesAPI = {
       profile?: string,
     ): Promise<any> =>
       ipcRenderer.invoke("get-widget-data", dashboardId, dataSource, profile),
+    /** Clear the script result cache in the main process so the next fetch runs fresh. */
+    clearCache: (): Promise<boolean> =>
+      ipcRenderer.invoke("clear-widget-cache"),
     onUpdate: (callback: (filename: string) => void): (() => void) => {
       const handler = (
         _event: Electron.IpcRendererEvent,

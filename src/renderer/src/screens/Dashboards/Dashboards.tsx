@@ -18,6 +18,7 @@ export default function Dashboards({ profile, selectedDashboardId, onDashboardSe
   const [currentDashboard, setCurrentDashboard] = useState<DashboardConfig | null>(null);
   const [dashboardList, setDashboardList] = useState<string[]>([]);
   const [isSidebarOpen, setIsSidebarOpen] = useState(true);
+  const [refreshKey, setRefreshKey] = useState(0);
   
   const chatRef = useRef<DashboardChatHandle>(null);
   const gridRef = useRef<DashboardGridHandle>(null);
@@ -146,6 +147,17 @@ export default function Dashboards({ profile, selectedDashboardId, onDashboardSe
     chatRef.current?.sendMessage(prompt);
   }, [currentDashboard, isSidebarOpen]);
 
+  const handleRefresh = useCallback(async () => {
+    if (!currentDashboard) return;
+    // 1. Clear the server-side script result cache so all widgets get fresh data
+    await window.hermesAPI.dashboards.clearCache();
+    // 2. Reload the dashboard config (in case the AI changed it)
+    const config = await window.hermesAPI.dashboards.get(currentDashboard.id, profile);
+    if (config) setCurrentDashboard(config);
+    // 3. Bump refreshKey so all WidgetRenderer instances remount and re-fetch
+    setRefreshKey(k => k + 1);
+  }, [currentDashboard, profile]);
+
   return (
     <div className={`dashboards-screen ${currentDashboard ? "split-view" : "full-chat"}`}>
       <aside className={`chat-sidebar ${isSidebarOpen ? "open" : "closed"}`}>
@@ -196,7 +208,7 @@ export default function Dashboards({ profile, selectedDashboardId, onDashboardSe
                 <Sparkles size={14} className="mr-2 text-dash-accent" />
                 AI Summary
               </button>
-              <button className="refresh-btn" onClick={() => window.hermesAPI.dashboards.get(currentDashboard.id, profile).then(setCurrentDashboard)}>
+              <button className="refresh-btn" onClick={handleRefresh}>
                 <RefreshCw size={14} className="mr-2" />
                 Refresh
               </button>
@@ -204,6 +216,7 @@ export default function Dashboards({ profile, selectedDashboardId, onDashboardSe
           </header>
           <DashboardGrid 
             ref={gridRef}
+            key={refreshKey}
             dashboard={currentDashboard} 
             profile={profile} 
             onSummarizeWidget={handleSummarizeWidget}

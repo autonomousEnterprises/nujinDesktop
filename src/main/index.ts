@@ -111,6 +111,7 @@ import {
   getDashboard,
   saveDashboard,
   getWidgetData,
+  clearWidgetCache,
   watchDashboards,
   initNujinWorkspace,
 } from "./dashboards";
@@ -698,6 +699,13 @@ function setupIPC(): void {
     (_event, dashboardId: string, dataSource: string, profile?: string) =>
       getWidgetData(dashboardId, dataSource, profile),
   );
+
+  // Clears the script result cache so the next getWidgetData call forces a fresh run.
+  // Called by the Refresh button in the dashboard UI.
+  ipcMain.handle("clear-widget-cache", () => {
+    clearWidgetCache();
+    return true;
+  });
 }
 
 function buildMenu(): void {
