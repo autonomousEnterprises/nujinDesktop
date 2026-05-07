@@ -68,7 +68,7 @@ linux:
   category: Utility
   synopsis: Self-improving AI assistant desktop app
   description: |
-    Hermes Desktop is a native desktop app for installing, configuring, and chatting
+    nujinDesktopis a native desktop app for installing, configuring, and chatting
     with Hermes Agent — a self-improving AI assistant with tool use, multi-platform
     messaging, and a closed learning loop.
 appImage:
@@ -248,7 +248,7 @@ License: MIT
 LicenseUrl: https://github.com/fathah/hermes-desktop/blob/main/LICENSE
 ShortDescription: Self-improving AI assistant desktop app
 Description: |-
-  Hermes Desktop is a native desktop app for installing, configuring, and chatting
+  nujinDesktopis a native desktop app for installing, configuring, and chatting
   with Hermes Agent — a self-improving AI assistant with tool use, multi-platform
   messaging, and a closed learning loop.
 Tags:
@@ -824,7 +824,7 @@ Replace the existing `publish` job:
         uses: softprops/action-gh-release@v2
         with:
           tag_name: ${{ needs.prepare.outputs.tag }}
-          name: Hermes Desktop ${{ needs.prepare.outputs.tag }}
+          name: nujinDesktop${{ needs.prepare.outputs.tag }}
           generate_release_notes: true
           files: artifacts/*
 ```
@@ -858,7 +858,7 @@ with:
         uses: softprops/action-gh-release@v2
         with:
           tag_name: ${{ needs.prepare.outputs.tag }}
-          name: Hermes Desktop ${{ needs.prepare.outputs.tag }}
+          name: nujinDesktop${{ needs.prepare.outputs.tag }}
           generate_release_notes: true
           files: |
             artifacts/*.dmg

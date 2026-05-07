@@ -1,5 +1,5 @@
-appId: com.nousresearch.hermes
-productName: Hermes Agent
+appId: com.autonomousenterprises.nujinDesktop
+productName: NujinDesktop
 directories:
   buildResources: build
 files:
@@ -12,7 +12,7 @@ files:
 asarUnpack:
   - resources/**
 win:
-  executableName: hermes-agent
+  executableName: nujinDesktop
 nsis:
   artifactName: ${name}-${version}-setup.${ext}
   shortcutName: ${productName}
@@ -38,13 +38,12 @@ linux:
     - snap
     - deb
     - rpm
-  maintainer: electronjs.org
-  vendor: Nous Research
+  maintainer: Christonomous
+  vendor: AutonomousEnterprises
   category: Utility
-  synopsis: Self-improving AI assistant desktop app
+  synopsis: Onchain Sovereignty
   description: >-
-    Hermes Desktop is a native desktop app for installing, configuring, and chatting
-    with Hermes Agent — a self-improving AI assistant with tool use, multi-platform
+    nujinDesktop is a native desktop app for onchain Sovereignty — a self-improving AI agent with tool use, multi-platform
     messaging, and a closed learning loop.
 appImage:
   artifactName: ${name}-${version}.${ext}
