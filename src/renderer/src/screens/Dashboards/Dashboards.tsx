@@ -132,7 +132,21 @@ export default function Dashboards({ profile, selectedDashboardId, onDashboardSe
   const handleSummarizeWidget = useCallback((data: any, title: string) => {
     if (!isSidebarOpen) setIsSidebarOpen(true);
     
-    const prompt = `Please summarize the data for the "${title}" widget:\n\n${JSON.stringify(data, null, 2)}`;
+    const prompt = `You are a data analyst. I'm looking at the **"${title}"** widget on my dashboard.
+
+Here is the raw data behind it:
+\`\`\`json
+${JSON.stringify(data, null, 2)}
+\`\`\`
+
+**Do NOT repeat or list the raw data back to me.**
+
+Instead, tell me:
+- What does this data actually mean? Is this good, bad, or normal?
+- Are there any standout values, trends, anomalies, or warning signs I should pay attention to?
+- What should I do or watch based on this? Any concrete next steps or things to monitor?
+
+Be direct and concise. Write like a smart colleague giving me a quick verbal briefing, not a formal report.`;
     chatRef.current?.sendMessage(prompt);
   }, [isSidebarOpen]);
 
@@ -141,8 +155,22 @@ export default function Dashboards({ profile, selectedDashboardId, onDashboardSe
     if (!isSidebarOpen) setIsSidebarOpen(true);
     
     const allData = gridRef.current?.getDashboardData() || {};
-    const prompt = `Please provide a high-level summary of the entire "${currentDashboard.title}" dashboard. 
-    Here is the data for all widgets:\n\n${JSON.stringify(allData, null, 2)}`;
+    const prompt = `You are a data analyst. I'm looking at my **"${currentDashboard.title}"** dashboard.
+
+Here is the raw data from all widgets:
+\`\`\`json
+${JSON.stringify(allData, null, 2)}
+\`\`\`
+
+**Do NOT repeat or list the raw numbers back to me.**
+
+Give me an executive-level briefing:
+- What is the overall picture? What story does this data tell right now?
+- What are the most important signals — the things I should actually care about?
+- Are there any anomalies, risks, opportunities, or red flags?
+- What are the 2-3 most important things I should act on or keep an eye on?
+
+Be sharp, direct, and prioritised. Skip anything that's normal and unremarkable. Focus on what matters.`;
     
     chatRef.current?.sendMessage(prompt);
   }, [currentDashboard, isSidebarOpen]);
