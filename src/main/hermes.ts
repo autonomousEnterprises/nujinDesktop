@@ -11,7 +11,7 @@ import {
   HERMES_SCRIPT,
   getEnhancedPath,
 } from "./installer";
-import { getModelConfig, readEnv, getConnectionConfig } from "./config";
+import { getModelConfig, readEnv, getConnectionConfig, setEnvValue } from "./config";
 import { stripAnsi } from "./utils";
 
 const LOCAL_API_URL = "http://127.0.0.1:8642";
@@ -32,6 +32,14 @@ function getRemoteAuthHeader(): Record<string, string> {
   const conn = getConnectionConfig();
   if (conn.mode === "remote" && conn.apiKey) {
     return { Authorization: `Bearer ${conn.apiKey}` };
+  }
+  
+  // Local mode: check for API_SERVER_KEY to support session continuation
+  if (conn.mode === "local") {
+    const env = readEnv();
+    if (env.API_SERVER_KEY) {
+      return { Authorization: `Bearer ${env.API_SERVER_KEY}` };
+    }
   }
   return {};
 }
@@ -61,6 +69,31 @@ const URL_KEY_MAP: Array<{ pattern: RegExp; envKey: string }> = [
 
 interface ChatHandle {
   abort: () => void;
+}
+
+// ────────────────────────────────────────────────────
+//  Ensure API_SERVER_KEY is set for session persistence
+// ────────────────────────────────────────────────────
+
+function ensureApiServerKey(): boolean {
+  try {
+    const env = readEnv();
+    if (env.API_SERVER_KEY) return false;
+
+    // Generate a random 32-char hex string
+    const randomKey = Array.from({ length: 32 }, () =>
+      Math.floor(Math.random() * 16).toString(16),
+    ).join("");
+
+    setEnvValue("API_SERVER_KEY", randomKey);
+    console.log(
+      `[Hermes] Generated and saved API_SERVER_KEY to ~/.hermes/.env`,
+    );
+    return true; // Key was just created
+  } catch (err) {
+    console.error("[Hermes] Failed to ensure API_SERVER_KEY:", err);
+    return false;
+  }
 }
 
 // ────────────────────────────────────────────────────
@@ -307,95 +340,114 @@ function sendMessageViaApi(
 
   const chatUrl = `${getApiUrl()}/v1/chat/completions`;
   const requester = chatUrl.startsWith("https") ? https.request : http.request;
-  const req = requester(
-    chatUrl,
-    {
-      method: "POST",
-      headers,
-      signal: controller.signal,
-    },
-    (res) => {
-      const sid = res.headers["x-hermes-session-id"];
-      if (sid && typeof sid === "string") {
-        sessionId = sid;
-        if (cb.onSessionId) cb.onSessionId(sid);
-      }
 
-      if (res.statusCode !== 200) {
-        let errBody = "";
-        res.on("data", (d) => {
-          errBody += d.toString();
-        });
-        res.on("end", () => {
-          try {
-            const err = JSON.parse(errBody);
-            finish(err.error?.message || `API error ${res.statusCode}`);
-          } catch {
-            finish(
-              `API server returned ${res.statusCode}: ${errBody.slice(0, 200)}`,
-            );
+  let retryCount = 0;
+  const maxRetries = 3;
+
+  function doRequest(): void {
+    const req = requester(
+      chatUrl,
+      {
+        method: "POST",
+        headers,
+        signal: controller.signal,
+      },
+      (res) => {
+        const sid = res.headers["x-hermes-session-id"];
+        if (sid && typeof sid === "string") {
+          sessionId = sid;
+          if (cb.onSessionId) cb.onSessionId(sid);
+        }
+
+        if (res.statusCode !== 200) {
+          let errBody = "";
+          res.on("data", (d) => {
+            errBody += d.toString();
+          });
+          res.on("end", () => {
+            try {
+              const err = JSON.parse(errBody);
+              finish(err.error?.message || `API error ${res.statusCode}`);
+            } catch {
+              finish(
+                `API server returned ${res.statusCode}: ${errBody.slice(0, 200)}`,
+              );
+            }
+          });
+          return;
+        }
+
+        let buffer = "";
+
+        /** Parse an SSE block which may contain `event:` and `data:` lines. */
+        function processSseBlock(block: string): boolean {
+          let eventType = "";
+          let dataLine = "";
+          for (const line of block.split("\n")) {
+            if (line.startsWith("event: ")) {
+              eventType = line.slice(7).trim();
+            } else if (line.startsWith("data: ")) {
+              dataLine = line.slice(6);
+            }
+          }
+          if (!dataLine) return false;
+          if (eventType) {
+            // Custom event (e.g. hermes.tool.progress) — never signals [DONE]
+            processCustomEvent(eventType, dataLine);
+            return false;
+          }
+          return processSseData(dataLine);
+        }
+
+        res.on("data", (chunk: Buffer) => {
+          buffer += chunk.toString();
+          const parts = buffer.split("\n\n");
+          buffer = parts.pop() || "";
+
+          for (const part of parts) {
+            if (processSseBlock(part)) return;
           }
         });
+
+        res.on("end", () => {
+          if (buffer.trim()) {
+            for (const part of buffer.split("\n\n")) {
+              if (processSseBlock(part)) return;
+            }
+          }
+          // Signal completion — even when no content was received
+          if (!hasContent && !lastError) {
+            probeRealError();
+            return;
+          }
+          finish(hasContent ? undefined : lastError);
+        });
+
+        res.on("error", (err) => finish(`Stream error: ${err.message}`));
+      },
+    );
+
+    req.on("error", (err) => {
+      if (err.name === "AbortError") return;
+
+      // Handle connection reset (often happens during gateway restart)
+      if (err.message.includes("ECONNRESET") && retryCount < maxRetries) {
+        retryCount++;
+        console.log(
+          `[Hermes] Connection reset, retrying (${retryCount}/${maxRetries})...`,
+        );
+        setTimeout(doRequest, 1000);
         return;
       }
 
-      let buffer = "";
+      finish(`API request failed: ${err.message}`);
+    });
 
-      /** Parse an SSE block which may contain `event:` and `data:` lines. */
-      function processSseBlock(block: string): boolean {
-        let eventType = "";
-        let dataLine = "";
-        for (const line of block.split("\n")) {
-          if (line.startsWith("event: ")) {
-            eventType = line.slice(7).trim();
-          } else if (line.startsWith("data: ")) {
-            dataLine = line.slice(6);
-          }
-        }
-        if (!dataLine) return false;
-        if (eventType) {
-          // Custom event (e.g. hermes.tool.progress) — never signals [DONE]
-          processCustomEvent(eventType, dataLine);
-          return false;
-        }
-        return processSseData(dataLine);
-      }
+    req.write(body);
+    req.end();
+  }
 
-      res.on("data", (chunk: Buffer) => {
-        buffer += chunk.toString();
-        const parts = buffer.split("\n\n");
-        buffer = parts.pop() || "";
-
-        for (const part of parts) {
-          if (processSseBlock(part)) return;
-        }
-      });
-
-      res.on("end", () => {
-        if (buffer.trim()) {
-          for (const part of buffer.split("\n\n")) {
-            if (processSseBlock(part)) return;
-          }
-        }
-        // Signal completion — even when no content was received
-        if (!hasContent && !lastError) {
-          probeRealError();
-          return;
-        }
-        finish(hasContent ? undefined : lastError);
-      });
-
-      res.on("error", (err) => finish(`Stream error: ${err.message}`));
-    },
-  );
-
-  req.on("error", (err) => {
-    if (err.name === "AbortError") return;
-    finish(`API request failed: ${err.message}`);
-  });
-
-  req.write(body);
-  req.end();
+  doRequest();
 
   return {
     abort: () => {
@@ -645,7 +697,12 @@ function ensureInitialized(): void {
   if (_initialized) return;
   _initialized = true;
   if (!isRemoteMode()) {
+    const keyCreated = ensureApiServerKey();
     ensureApiServerConfig();
+    if (keyCreated && isGatewayRunning()) {
+      console.log("[Hermes] API_SERVER_KEY was created, restarting gateway...");
+      restartGateway();
+    }
   }
   startHealthPolling();
 }
