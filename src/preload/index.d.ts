@@ -444,6 +444,7 @@ interface HermesAPI {
       dataSource: string,
       profile?: string,
     ) => Promise<any>;
+    executeAction: (scriptPath: string, profile?: string) => Promise<any>;
     onUpdate: (callback: (filename: string) => void) => () => void;
   };
 }

@@ -31,15 +31,15 @@ const NUJIN_SYSTEM_PROMPT = `You are the Nujin Dashboard Engineer. You build ben
 DIRECTORY STRUCTURE:
 - Dashboard JSON configs: ~/.hermes/nujin/dashboards/<id>.json
 - Backend Python scripts: ~/.hermes/nujin/scripts/<name>.py
-- Cached data (for cron): ~/.hermes/nujin/data/<name>.json
+- Persistent state / cache: ~/.hermes/nujin/state/<name>.json
 
 DATA ARCHITECTURE:
 1. On-Demand (Default): Script prints JSON to stdout. The app executes it when the dashboard is viewed.
    Set widget "dataSource": "scripts/<name>.py"
 2. Persistent Background (Cron): Use when the user needs data tracked while the app is closed.
-   - Script writes JSON to ~/.hermes/nujin/data/<name>.json
+   - Script writes JSON to ~/.hermes/nujin/state/<name>.json
    - Schedule: hermes cron create "*/5 * * * *" --name "Nujin <name>" -- "~/.hermes/hermes-agent/venv/bin/python ~/.hermes/nujin/scripts/<name>.py"
-   - Set widget "dataSource": "data/<name>.json"
+   - Set widget "dataSource": "state/<name>.json"
 
 SUPPORTED WIDGET TYPES (use these EXACT names):
 - metric: Shows a single value. Config: valuePath (dot-notation), subtext, icon
@@ -49,12 +49,23 @@ SUPPORTED WIDGET TYPES (use these EXACT names):
 - bar_chart: Bar chart. Config: seriesPath, index, categories, colors
 - donut_chart: Donut chart. Config: seriesPath, index, category, colors
 - progress: Progress bar (0-100). Config: valuePath, subtext
+- button_group: A set of interactive buttons. Config: actions (array of action objects)
+- action: A single interactive button. Config: same as action object
+
+ACTION OBJECT STRUCTURE:
+- id: unique string
+- label: button text
+- scriptPath: relative path to Python script (e.g., "scripts/clear_cache.py")
+- icon: activity, money, users, cart, clock, success, error (optional)
+- color: blue, emerald, indigo, rose, amber, cyan, violet, orange (optional)
+- variant: primary, secondary, outline, ghost (optional)
 
 CRITICAL CONFIG FIELDS:
 - valuePath: Dot-notation path to extract a value from nested script JSON. Example: if script returns {"cpu":{"total_percent":1.3}}, set "valuePath":"cpu.total_percent" → widget shows 1.3
 - rowsPath: Dot-notation path to an array of objects for table rows. Example: "rowsPath":"processes"
 - seriesPath: Dot-notation path to array of data points for charts. Example: "seriesPath":"history"
 - columns: Array of column key names for tables. Example: ["pid","name","cpu_percent"]
+- actions: Any widget can have an "actions" array of action objects rendered at the bottom.
 
 VALUE FORMATTING (in widget config):
 - format: "currency" | "percent" | "compact" | "number" | "bytes" | "duration" | "auto" (default "auto")

@@ -52,11 +52,15 @@ async function resolvePythonInterpreter(): Promise<string> {
  * Execute a Python script and return its parsed JSON stdout.
  * Tries the Hermes venv first; on ModuleNotFoundError retries with system python3.
  */
-async function executeScript(scriptPath: string, cwd: string): Promise<any> {
+async function executeScript(scriptPathWithArgs: string, cwd: string): Promise<any> {
   const env = { ...process.env, PYTHONIOENCODING: "utf-8" };
 
+  const parts = scriptPathWithArgs.trim().split(/\s+/);
+  const scriptPath = parts[0];
+  const args = parts.slice(1);
+
   const tryRun = async (interpreter: string) => {
-    const { stdout } = await execFileAsync(interpreter, [scriptPath], {
+    const { stdout } = await execFileAsync(interpreter, [scriptPath, ...args], {
       timeout: 60_000,
       env,
       cwd,
@@ -95,16 +99,26 @@ async function executeScript(scriptPath: string, cwd: string): Promise<any> {
   }
 }
 
+export interface ActionConfig {
+  id: string;
+  label: string;
+  scriptPath: string; // Relative path from scripts directory
+  icon?: string;
+  color?: string;
+  variant?: "primary" | "secondary" | "outline" | "ghost" | "danger";
+}
+
 export interface WidgetConfig {
   id: string;
-  type: "metric" | "line_chart" | "bar_chart" | "area_chart" | "donut_chart" | "table" | "list" | "sparkline" | "progress";
+  type: "metric" | "line_chart" | "bar_chart" | "area_chart" | "donut_chart" | "table" | "list" | "sparkline" | "progress" | "button_group" | "action";
   title: string;
   description?: string;
-  dataSource: string; // Relative path from dashboards directory
+  dataSource?: string; // Optional for action-only widgets
   refreshInterval?: number; // in seconds
   config?: any; // Tremor specific config
   gridSize?: "small" | "medium" | "large" | "wide" | "tall" | "full";
   color?: string;
+  actions?: ActionConfig[];
 }
 
 export interface DashboardConfig {
@@ -124,11 +138,22 @@ export function initNujinWorkspace(profile?: string): void {
   const nujinDir = join(hermesHome, "nujin");
   const dashboardsDir = join(nujinDir, "dashboards");
   const scriptsDir = join(nujinDir, "scripts");
-  const dataDir = join(nujinDir, "data");
+  const stateDir = join(nujinDir, "state");
+  const oldDataDir = join(nujinDir, "data");
   const instructionFile = join(nujinDir, "INSTRUCTION.md");
 
+  // Migration: Rename data to state if it exists
+  if (fs.existsSync(oldDataDir) && !fs.existsSync(stateDir)) {
+    try {
+      fs.renameSync(oldDataDir, stateDir);
+      console.log(`[Dashboards] Migrated 'data' directory to 'state'`);
+    } catch (e) {
+      console.error(`[Dashboards] Failed to migrate 'data' to 'state':`, e);
+    }
+  }
+
   // Create directories if they don't exist
-  [nujinDir, dashboardsDir, scriptsDir, dataDir].forEach(dir => {
+  [nujinDir, dashboardsDir, scriptsDir, stateDir].forEach(dir => {
     if (!fs.existsSync(dir)) {
       fs.mkdirSync(dir, { recursive: true });
     }
@@ -143,7 +168,7 @@ You are the **Nujin Dashboard Engineer**. Build bento-style dashboards backed by
 ## 📁 Directory Structure
 - Dashboard JSON configs: \`~/.hermes/nujin/dashboards/<id>.json\`
 - Backend Python scripts: \`~/.hermes/nujin/scripts/<name>.py\`
-- Cached data (for cron): \`~/.hermes/nujin/data/<name>.json\`
+- Persistent state / cache: \`~/.hermes/nujin/state/<name>.json\`
 
 ## 🔌 Data Architecture (Two Modes)
 
@@ -153,9 +178,9 @@ Script prints JSON to **stdout**. The app executes it when the dashboard is view
 
 ### Persistent Background (Cron)
 Use when the user needs data tracked while the app is closed.
-1. Script writes JSON to \`~/.hermes/nujin/data/<name>.json\`
+1. Script writes JSON to \`~/.hermes/nujin/state/<name>.json\`
 2. Schedule: \`hermes cron create "*/5 * * * *" --name "Nujin <name>" -- "~/.hermes/hermes-agent/venv/bin/python ~/.hermes/nujin/scripts/<name>.py"\`
-3. Set widget \`"dataSource": "data/<name>.json"\`
+3. Set widget \`"dataSource": "state/<name>.json"\`
 
 ## 📊 Supported Widget Types (EXACT names)
 
@@ -226,7 +251,7 @@ export function listDashboards(profile?: string): string[] {
   if (!fs.existsSync(dir)) return [];
   
   return fs.readdirSync(dir)
-    .filter(f => f.endsWith(".json") && !f.startsWith("data_"))
+    .filter(f => f.endsWith(".json") && !f.startsWith("state_"))
     .map(f => f.replace(".json", ""));
 }
 
@@ -272,14 +297,14 @@ export function deleteDashboard(id: string, profile?: string): boolean {
   }
   
   try {
-    // 1. Read the dashboard config to find associated scripts/data files
+    // 1. Read the dashboard config to find associated scripts/state files
     const content = fs.readFileSync(path, "utf-8");
     const config: DashboardConfig = JSON.parse(content);
     
     const assetsToRemove = new Set<string>();
     if (config.widgets) {
       config.widgets.forEach(w => {
-        if (w.dataSource && (w.dataSource.startsWith("scripts/") || w.dataSource.startsWith("data/"))) {
+        if (w.dataSource && (w.dataSource.startsWith("scripts/") || w.dataSource.startsWith("state/"))) {
           assetsToRemove.add(w.dataSource);
         }
       });
@@ -294,14 +319,14 @@ export function deleteDashboard(id: string, profile?: string): boolean {
       const otherConfig = getDashboard(otherId, profile);
       if (otherConfig && otherConfig.widgets) {
         otherConfig.widgets.forEach(w => {
-          if (w.dataSource && (w.dataSource.startsWith("scripts/") || w.dataSource.startsWith("data/"))) {
+          if (w.dataSource && (w.dataSource.startsWith("scripts/") || w.dataSource.startsWith("state/"))) {
             sharedAssets.add(w.dataSource);
           }
         });
       }
     });
 
-    // 3. Delete orphaned scripts and data files
+    // 3. Delete orphaned scripts and state files
     const hermesHome = getHermesHome(profile);
     assetsToRemove.forEach(relPath => {
       if (!sharedAssets.has(relPath)) {
@@ -328,37 +353,48 @@ export function deleteDashboard(id: string, profile?: string): boolean {
 }
 
 export async function getWidgetData(dashboardId: string, dataSource: string, profile?: string): Promise<any> {
+  console.log(`[Dashboards] getWidgetData: ${dataSource}`);
   const dir = getDashboardsDir(profile);
   const hermesHome = getHermesHome(profile);
 
   // ── Script-Driven Data (.py) ──────────────────────────────────────────────
-  if (dataSource.endsWith(".py")) {
-    const fullScriptPath = dataSource.startsWith("/")
-      ? dataSource
-      : join(hermesHome, "nujin", dataSource);
+  if (dataSource.includes(".py")) {
+    const parts = dataSource.trim().split(/\s+/);
+    const relPath = parts[0];
+    
+    const fullScriptPath = relPath.startsWith("/")
+      ? relPath
+      : join(hermesHome, "nujin", relPath);
 
     if (!fs.existsSync(fullScriptPath)) return null;
 
-    const cacheKey = fullScriptPath;
+    // The cache key should include the full dataSource string (including args)
+    // so that "counter.py get" and "counter.py status" are cached separately.
+    const cacheKey = dataSource;
 
     // 1. Return cached result if still fresh
     const cached = scriptResultCache.get(cacheKey);
     if (cached && Date.now() - cached.timestamp < CACHE_TTL_MS) {
-      console.log(`[WidgetData] Cache hit: ${fullScriptPath}`);
+      console.log(`[WidgetData] Cache hit: ${cacheKey}`);
       return cached.data;
     }
 
     // 2. Attach to an already-running execution (deduplication)
     const inflight = inFlightScripts.get(cacheKey);
     if (inflight) {
-      console.log(`[WidgetData] Joining in-flight: ${fullScriptPath}`);
+      console.log(`[WidgetData] Joining in-flight: ${cacheKey}`);
       return inflight;
     }
 
     // 3. Start a fresh execution
-    console.log(`[WidgetData] Executing: ${fullScriptPath}`);
+    // Pass the full dataSource string so executeScript can parse out the arguments
+    const execPath = relPath.startsWith("/") 
+      ? dataSource 
+      : join(hermesHome, "nujin", dataSource);
+
+    console.log(`[WidgetData] Executing: ${execPath}`);
     const scriptDir = join(hermesHome, "nujin");
-    const promise = executeScript(fullScriptPath, scriptDir)
+    const promise = executeScript(execPath, scriptDir)
       .then((result) => {
         // Only cache successful results (not error objects)
         if (!result?.error) {
@@ -376,17 +412,72 @@ export async function getWidgetData(dashboardId: string, dataSource: string, pro
     return promise;
   }
 
-  // ── Static JSON Data ─────────────────────────────────────────────────────
-  const jsonPath = join(dir, dataSource);
+  // ── Static JSON State ─────────────────────────────────────────────────────
+  const jsonPath = dataSource.startsWith("/") 
+    ? dataSource 
+    : join(hermesHome, "nujin", dataSource);
+    
   if (!fs.existsSync(jsonPath)) return null;
 
   try {
     const content = fs.readFileSync(jsonPath, "utf-8");
     return JSON.parse(content);
   } catch (err) {
-    console.error(`[WidgetData] Error reading static data ${dataSource}:`, err);
+    console.error(`[WidgetData] Error reading static state ${dataSource}:`, err);
     return null;
   }
+}
+
+/**
+ * Execute a dashboard action script.
+ * Supports arguments in the scriptPath (e.g. "scripts/counter.py inc").
+ * Actions don't necessarily return data for a widget, but we return the stdout/stderr
+ * so the UI can show feedback (e.g., in a toast).
+ */
+export async function executeDashboardAction(scriptPath: string, profile?: string): Promise<any> {
+  const hermesHome = getHermesHome(profile);
+  const parts = scriptPath.trim().split(/\s+/);
+  const relPath = parts[0];
+
+  // We need to preserve the arguments, so we construct the full command string
+  const fullCommand = relPath.startsWith("/")
+    ? scriptPath
+    : join(hermesHome, "nujin", scriptPath);
+
+  // But we still need the absolute path to the script file for existence check
+  const absoluteScriptPath = relPath.startsWith("/")
+    ? relPath
+    : join(hermesHome, "nujin", relPath);
+
+  if (!fs.existsSync(absoluteScriptPath)) {
+    return { error: "File not found", details: `Script does not exist at ${absoluteScriptPath}` };
+  }
+
+  console.log(`[Dashboards] Executing Action: ${fullCommand}`);
+  const scriptDir = join(hermesHome, "nujin");
+  
+  // 1. Execute the script (with arguments)
+  const result = await executeScript(fullCommand, scriptDir);
+
+  // 2. If successful, invalidate any cached data for this script file
+  // (We search for any cache keys that start with the relative script path)
+  if (!result?.error) {
+    for (const key of scriptResultCache.keys()) {
+      if (key.startsWith(relPath)) {
+        console.log(`[Dashboards] Invalidating cache for: ${key}`);
+        scriptResultCache.delete(key);
+      }
+    }
+    // Also clear in-flight promises for this script to prevent joining stale executions
+    for (const key of inFlightScripts.keys()) {
+      if (key.startsWith(relPath)) {
+        console.log(`[Dashboards] Clearing in-flight for: ${key}`);
+        inFlightScripts.delete(key);
+      }
+    }
+  }
+
+  return result;
 }
 
 let watcher: fs.FSWatcher | null = null;

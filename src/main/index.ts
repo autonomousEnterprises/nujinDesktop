@@ -114,6 +114,7 @@ import {
   saveDashboard,
   deleteDashboard,
   getWidgetData,
+  executeDashboardAction,
   clearWidgetCache,
   watchDashboards,
   initNujinWorkspace,
@@ -727,6 +728,11 @@ function setupIPC(): void {
     "get-widget-data",
     (_event, dashboardId: string, dataSource: string, profile?: string) =>
       getWidgetData(dashboardId, dataSource, profile),
+  );
+  ipcMain.handle(
+    "execute-dashboard-action",
+    (_event, scriptPath: string, profile?: string) =>
+      executeDashboardAction(scriptPath, profile),
   );
 
   // Clears the script result cache so the next getWidgetData call forces a fresh run.

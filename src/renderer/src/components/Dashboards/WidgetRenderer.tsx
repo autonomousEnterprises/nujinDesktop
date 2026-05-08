@@ -1,4 +1,5 @@
 import { useState, useEffect } from "react";
+import "./Widgets.css";
 import {
   Card,
   Metric,
@@ -21,6 +22,7 @@ import {
   Flex,
   ProgressBar,
   ProgressCircle,
+  Button,
 } from "@tremor/react";
 import {
   TrendingUp,
@@ -38,7 +40,9 @@ import {
   ArrowUp,
   ArrowDown,
   ArrowUpDown,
-  Sparkles
+  Sparkles,
+  Loader2,
+  Play
 } from "lucide-react";
 import { WidgetConfig } from "../../../../main/dashboards";
 import { formatValue, formatCellValue } from "./formatUtils";
@@ -67,6 +71,35 @@ const ICON_MAP: Record<string, any> = {
 };
 
 const NEON_COLORS = ["cyan", "violet", "fuchsia", "blue", "emerald", "amber", "rose"];
+
+const TREMOR_COLORS = ["slate", "gray", "zinc", "neutral", "stone", "red", "orange", "amber", "yellow", "lime", "green", "emerald", "teal", "cyan", "sky", "blue", "indigo", "violet", "purple", "fuchsia", "pink", "rose"];
+
+const normalizeColor = (color?: string): any => {
+  if (!color) return "blue";
+  const c = color.toLowerCase().trim();
+  if (TREMOR_COLORS.includes(c)) return c;
+  return "blue";
+};
+
+const normalizeVariant = (variant?: string): "primary" | "secondary" | "light" | "danger" => {
+  if (!variant) return "primary";
+  const v = variant.toLowerCase().trim();
+  if (v === "danger" || v === "destructive" || v === "red") return "danger";
+  if (v === "outline" || v === "secondary") return "secondary";
+  if (v === "ghost" || v === "light") return "light";
+  return "primary";
+};
+
+const normalizeDeltaType = (type?: string): "increase" | "moderateIncrease" | "decrease" | "moderateDecrease" | "unchanged" => {
+  if (!type) return "increase";
+  const t = type.toLowerCase().trim();
+  if (t.includes("moderate") && t.includes("increase")) return "moderateIncrease";
+  if (t.includes("moderate") && t.includes("decrease")) return "moderateDecrease";
+  if (t.includes("increase") || t === "up" || t === "positive") return "increase";
+  if (t.includes("decrease") || t === "down" || t === "negative") return "decrease";
+  if (t === "unchanged" || t === "flat" || t === "stable") return "unchanged";
+  return "increase";
+};
 
 const renderTableCell = (header: string, value: any, widgetConfig?: any) => {
   if (value === undefined || value === null) return "—";
@@ -162,6 +195,10 @@ function transformData(raw: any, widget: WidgetConfig): any {
     return raw;
   }
 
+  if (wType === "button_group" || wType === "action" || wType === "buttons") {
+    return raw || {};
+  }
+
   return raw;
 }
 
@@ -172,8 +209,50 @@ export default function WidgetRenderer({ widget, dashboardId, profile, onDataFet
     key: "",
     direction: null,
   });
+  const [actionStates, setActionStates] = useState<Record<string, { loading: boolean; error?: string; success?: boolean }>>({});
+
+  const executeAction = async (action: any, e: React.MouseEvent) => {
+    e.stopPropagation();
+    const actionId = action.id || action.label;
+    
+    setActionStates(prev => ({ ...prev, [actionId]: { loading: true } }));
+    
+    try {
+      const result = await window.hermesAPI.dashboards.executeAction(action.scriptPath, profile);
+      if (result?.error) {
+        setActionStates(prev => ({ 
+          ...prev, 
+          [actionId]: { loading: false, error: result.details || result.error } 
+        }));
+      } else {
+        setActionStates(prev => ({ ...prev, [actionId]: { loading: false, success: true } }));
+        
+        // Refresh widget data immediately if action was successful
+        fetchData();
+
+        // Clear success state after 3 seconds
+        setTimeout(() => {
+          setActionStates(prev => {
+            const newState = { ...prev };
+            delete newState[actionId];
+            return newState;
+          });
+        }, 3000);
+      }
+    } catch (err: any) {
+      setActionStates(prev => ({ 
+        ...prev, 
+        [actionId]: { loading: false, error: err.message || "Execution failed" } 
+      }));
+    }
+  };
 
   const fetchData = async () => {
+    if (!widget.dataSource) {
+      setLoading(false);
+      return;
+    }
+
     try {
       setLoading(true);
       const result = await window.hermesAPI.dashboards.getWidgetData(dashboardId, widget.dataSource, profile);
@@ -190,10 +269,14 @@ export default function WidgetRenderer({ widget, dashboardId, profile, onDataFet
   };
 
   useEffect(() => {
-    fetchData();
-    if (widget.refreshInterval) {
-      const interval = setInterval(fetchData, widget.refreshInterval * 1000);
-      return () => clearInterval(interval);
+    if (widget.dataSource) {
+      fetchData();
+      if (widget.refreshInterval) {
+        const interval = setInterval(fetchData, widget.refreshInterval * 1000);
+        return () => clearInterval(interval);
+      }
+    } else {
+      setLoading(false);
     }
     return;
   }, [widget.dataSource, widget.refreshInterval, dashboardId, profile]);
@@ -217,22 +300,111 @@ export default function WidgetRenderer({ widget, dashboardId, profile, onDataFet
     );
   }
 
-  if (!data) return null;
-
   const widgetType = (widget.type || "").toLowerCase().trim();
+  const isActionType = widgetType === "button_group" || widgetType === "action" || widgetType === "buttons";
+
+  if (!data && !isActionType) return null;
+  const renderData = data || {};
   const WidgetIcon = widget.config?.icon ? ICON_MAP[widget.config.icon] : null;
 
-  const CardWrapper = ({ children, className = "" }: { children: React.ReactNode, className?: string }) => (
+  const CardWrapper = ({ children, className = "", onClick }: { children: React.ReactNode, className?: string, onClick?: (e: React.MouseEvent) => void }) => (
     <div 
       className={`premium-card h-full w-full p-6 flex flex-col cursor-pointer transition-all hover:scale-[1.01] hover:ring-2 hover:ring-dash-accent/30 group relative overflow-hidden ${className}`}
-      onClick={() => onSummarize && onSummarize(data, widget.title)}
+      onClick={(e) => {
+        if (onClick) {
+          onClick(e);
+        } else if (onSummarize) {
+          onSummarize(data, widget.title);
+        }
+      }}
     >
       <div className="absolute top-2 right-2 opacity-0 group-hover:opacity-100 transition-opacity bg-dash-accent/10 p-1.5 rounded-full text-dash-accent">
         <Sparkles size={12} />
       </div>
       {children}
+      
+      {/* Widget Actions (rendered at the bottom of any regular widget) */}
+      {widget.actions && widget.actions.length > 0 && !isActionType && (
+        <div 
+          className="mt-auto pt-6 flex flex-wrap gap-2 border-t border-slate-100 dark:border-slate-800/50 -mx-6 px-6 bg-slate-50/30 dark:bg-slate-900/10"
+          onClick={(e) => e.stopPropagation()}
+        >
+          {widget.actions.map((action) => {
+            const state = actionStates[action.id || action.label];
+            const ActionIcon = action.icon ? ICON_MAP[action.icon] : null;
+            
+            return (
+              <button
+                key={action.id || action.label}
+                onClick={(e) => executeAction(action, e)}
+                disabled={state?.loading}
+                className={`premium-action-btn ${
+                  state?.error ? "premium-action-btn-error" : 
+                  (state?.success ? "premium-action-btn-success" : 
+                  (normalizeVariant(action.variant) === "primary" ? "premium-action-btn-primary" : 
+                   normalizeVariant(action.variant) === "danger" ? "premium-action-btn-danger" : "premium-action-btn-secondary"))
+                } ${state?.loading ? "loading" : ""}`}
+              >
+                {state?.loading ? <Loader2 className="animate-spin-slow" /> : (ActionIcon && <ActionIcon />)}
+                <span>
+                  {state?.loading ? "Running..." : (state?.error ? "Failed" : (state?.success ? "Success" : action.label))}
+                </span>
+              </button>
+            );
+          })}
+        </div>
+      )}
     </div>
   );
+
+  // Button Group / Action Rendering
+  if (isActionType) {
+    const actions = widget.actions || (widgetType === "action" ? [{
+      id: widget.id,
+      label: widget.title,
+      scriptPath: widget.dataSource || "",
+      icon: widget.config?.icon,
+      color: widget.color,
+      variant: widget.config?.variant || "primary"
+    }] : []);
+
+    return (
+      <CardWrapper onClick={(e) => e.stopPropagation()}>
+        <Title className="text-gradient-animated text-lg font-black tracking-tight mb-4">{widget.title}</Title>
+        {widget.description && <Subtitle className="text-slate-400 text-xs font-medium mb-6">{widget.description}</Subtitle>}
+        <div className="flex flex-wrap gap-3">
+          {actions.map((action) => {
+            const state = actionStates[action.id || action.label];
+            const ActionIcon = action.icon ? ICON_MAP[action.icon] : null;
+            
+            return (
+              <button
+                key={action.id || action.label}
+                onClick={(e) => executeAction(action, e)}
+                disabled={state?.loading}
+                className={`premium-action-btn ${
+                  state?.error ? "premium-action-btn-error" : 
+                  (state?.success ? "premium-action-btn-success" : 
+                  (normalizeVariant(action.variant) === "primary" ? "premium-action-btn-primary" : 
+                   normalizeVariant(action.variant) === "danger" ? "premium-action-btn-danger" : "premium-action-btn-secondary"))
+                } ${state?.loading ? "loading" : ""}`}
+              >
+                {state?.loading ? <Loader2 className="animate-spin-slow" /> : (ActionIcon && <ActionIcon />)}
+                <span>
+                  {state?.error ? "Failed" : (state?.success ? "Done" : action.label)}
+                </span>
+              </button>
+            );
+          })}
+        </div>
+        {Object.values(actionStates).some(s => s.error) && (
+          <Text className="mt-4 text-rose-500 text-[10px] font-bold uppercase tracking-wider animate-pulse">
+            {Object.values(actionStates).find(s => s.error)?.error}
+          </Text>
+        )}
+      </CardWrapper>
+    );
+  }
 
   // Metric Rendering
   if (widgetType === "metric" || widgetType === "number") {
@@ -244,7 +416,7 @@ export default function WidgetRenderer({ widget, dashboardId, profile, onDataFet
               {widget.title}
             </Text>
             <Metric className="mt-2 text-4xl font-black tracking-tighter">
-              <span className="metric-value">{formatValue(data.value, widget.config)}</span>
+              <span className="metric-value">{formatValue(renderData.value, widget.config)}</span>
             </Metric>
           </div>
           {WidgetIcon && (
@@ -254,14 +426,14 @@ export default function WidgetRenderer({ widget, dashboardId, profile, onDataFet
           )}
         </Flex>
         <div className="mt-auto pt-6 flex items-center gap-4">
-          {data.delta !== undefined && (
-            <BadgeDelta deltaType={data.deltaType || "increase"} size="xs" className="font-bold">
-              {data.delta}
+          {renderData.delta !== undefined && (
+            <BadgeDelta deltaType={normalizeDeltaType(renderData.deltaType || widget.config?.deltaType)} size="xs" className="font-bold">
+              {renderData.delta}
             </BadgeDelta>
           )}
-          {data.subtext && (
+          {renderData.subtext && (
             <Text className="text-slate-500 dark:text-slate-500 text-[11px] font-medium truncate italic opacity-80">
-              {data.subtext}
+              {renderData.subtext}
             </Text>
           )}
         </div>
@@ -274,7 +446,7 @@ export default function WidgetRenderer({ widget, dashboardId, profile, onDataFet
     const ChartComponent = widgetType === "bar_chart" ? BarChart : (widgetType === "area_chart" || widgetType === "chart") ? AreaChart : LineChart;
     // Improved category/index detection
     let index = widget.config?.index || widget.config?.index_path;
-    const series = data.series || [];
+    const series = renderData.series || [];
 
     if (!index && series.length > 0) {
       const keys = Object.keys(series[0]);
@@ -337,7 +509,7 @@ export default function WidgetRenderer({ widget, dashboardId, profile, onDataFet
 
   // Donut Rendering
   if (widgetType === "donut_chart" || widgetType === "donut") {
-    const series = data.series || [];
+    const series = renderData.series || [];
     const indexKey = widget.config?.index || widget.config?.index_path || (series.length > 0 ? Object.keys(series[0]).find(k => ["name", "label", "category", "type", "id"].includes(k.toLowerCase())) || Object.keys(series[0])[0] : "name");
     const legendCategories = series.map((item: any) => item[indexKey] || "Other");
 
@@ -383,8 +555,8 @@ export default function WidgetRenderer({ widget, dashboardId, profile, onDataFet
 
   // Progress Rendering
   if (widgetType === "progress" || widgetType === "gauge") {
-    const value = data.value || 0;
-    const color = widget.color || "cyan";
+    const value = renderData.value || 0;
+    const color = normalizeColor(widget.color);
     return (
       <CardWrapper>
         <Flex alignItems="start" justifyContent="between" className="mb-8">
@@ -399,7 +571,7 @@ export default function WidgetRenderer({ widget, dashboardId, profile, onDataFet
           </ProgressCircle>
         </Flex>
         <div className="mt-auto">
-          <Text className="text-slate-500 text-[11px] font-bold mb-3 uppercase tracking-wider">{data.subtext || "Progress"}</Text>
+          <Text className="text-slate-500 text-[11px] font-bold mb-3 uppercase tracking-wider">{renderData.subtext || "Progress"}</Text>
           <ProgressBar value={value} color={color} className="h-3 rounded-full" />
         </div>
       </CardWrapper>
@@ -408,8 +580,8 @@ export default function WidgetRenderer({ widget, dashboardId, profile, onDataFet
 
   // Table Rendering
   if (widgetType === "table" || widgetType === "data_table") {
-    const headers = data.headers || widget.config?.columns || [];
-    const rows = data.rows || [];
+    const headers = renderData.headers || widget.config?.columns || [];
+    const rows = renderData.rows || [];
 
     const sortedRows = [...rows].sort((a, b) => {
       if (!sortConfig.key || !sortConfig.direction) return 0;
@@ -495,6 +667,8 @@ export default function WidgetRenderer({ widget, dashboardId, profile, onDataFet
       </CardWrapper>
     );
   }
+
+  // We'll move the action rendering logic higher up in the next chunk
 
   return (
     <CardWrapper className="border-dashed opacity-40">
