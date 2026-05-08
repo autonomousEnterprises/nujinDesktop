@@ -731,8 +731,8 @@ function setupIPC(): void {
   );
   ipcMain.handle(
     "execute-dashboard-action",
-    (_event, scriptPath: string, profile?: string) =>
-      executeDashboardAction(scriptPath, profile),
+    (_event, scriptPath: string, profile?: string, inputValue?: string, dashboardId?: string) =>
+      executeDashboardAction(scriptPath, profile, inputValue, dashboardId),
   );
 
   // Clears the script result cache so the next getWidgetData call forces a fresh run.

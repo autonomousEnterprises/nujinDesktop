@@ -666,8 +666,8 @@ const hermesAPI = {
       profile?: string,
     ): Promise<any> =>
       ipcRenderer.invoke("get-widget-data", dashboardId, dataSource, profile),
-    executeAction: (scriptPath: string, profile?: string): Promise<any> =>
-      ipcRenderer.invoke("execute-dashboard-action", scriptPath, profile),
+    executeAction: (scriptPath: string, profile?: string, inputValue?: string, dashboardId?: string): Promise<any> =>
+      ipcRenderer.invoke("execute-dashboard-action", scriptPath, profile, inputValue, dashboardId),
     /** Clear the script result cache in the main process so the next fetch runs fresh. */
     clearCache: (): Promise<boolean> =>
       ipcRenderer.invoke("clear-widget-cache"),

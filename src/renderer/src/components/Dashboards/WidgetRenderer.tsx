@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import "./Widgets.css";
 import {
   Card,
@@ -42,6 +42,10 @@ import {
   ArrowUpDown,
   Sparkles,
   Loader2,
+  RefreshCw,
+  Settings,
+  FileText,
+  Shield,
   Play
 } from "lucide-react";
 import { WidgetConfig } from "../../../../main/dashboards";
@@ -202,6 +206,78 @@ function transformData(raw: any, widget: WidgetConfig): any {
   return raw;
 }
 
+const CardWrapper = ({ 
+  children, 
+  className = "", 
+  onClick, 
+  onSummarize, 
+  data, 
+  title, 
+  actions, 
+  actionStates, 
+  executeAction, 
+  isActionType 
+}: { 
+  children: React.ReactNode, 
+  className?: string, 
+  onClick?: (e: React.MouseEvent) => void,
+  onSummarize?: (data: any, title: string) => void,
+  data?: any,
+  title: string,
+  actions?: any[],
+  actionStates?: Record<string, any>,
+  executeAction?: (action: any, e: React.MouseEvent) => void,
+  isActionType: boolean
+}) => (
+  <div 
+    className={`premium-card h-full w-full p-6 flex flex-col cursor-pointer transition-all hover:scale-[1.01] hover:ring-2 hover:ring-dash-accent/30 group relative overflow-hidden ${className}`}
+    onClick={(e) => {
+      if (onClick) {
+        onClick(e);
+      } else if (onSummarize) {
+        onSummarize(data, title);
+      }
+    }}
+  >
+    <div className="absolute top-2 right-2 opacity-0 group-hover:opacity-100 transition-opacity bg-dash-accent/10 p-1.5 rounded-full text-dash-accent">
+      <Sparkles size={12} />
+    </div>
+    {children}
+    
+    {/* Widget Actions (rendered at the bottom of any regular widget) */}
+    {actions && actions.length > 0 && !isActionType && (
+      <div 
+        className="mt-auto pt-6 flex flex-wrap gap-2 border-t border-slate-100 dark:border-slate-800/50 -mx-6 px-6 bg-slate-50/30 dark:bg-slate-900/10"
+        onClick={(e) => e.stopPropagation()}
+      >
+        {actions.map((action) => {
+          const state = actionStates?.[action.id || action.label];
+          const ActionIcon = action.icon ? ICON_MAP[action.icon] : null;
+          
+          return (
+            <button
+              key={action.id || action.label}
+              onClick={(e) => executeAction?.(action, e)}
+              disabled={state?.loading}
+              className={`premium-action-btn ${
+                state?.error ? "premium-action-btn-error" : 
+                (state?.success ? "premium-action-btn-success" : 
+                (normalizeVariant(action.variant) === "primary" ? "premium-action-btn-primary" : 
+                 normalizeVariant(action.variant) === "danger" ? "premium-action-btn-danger" : "premium-action-btn-secondary"))
+              } ${state?.loading ? "loading" : ""}`}
+            >
+              {state?.loading ? <Loader2 className="animate-spin-slow" size={14} /> : (ActionIcon && <ActionIcon size={14} />)}
+              <span>
+                {state?.loading ? "Running..." : (state?.error ? "Failed" : (state?.success ? "Success" : action.label))}
+              </span>
+            </button>
+          );
+        })}
+      </div>
+    )}
+  </div>
+);
+
 export default function WidgetRenderer({ widget, dashboardId, profile, onDataFetched, onSummarize }: WidgetRendererProps) {
   const [data, setData] = useState<any>(null);
   const [loading, setLoading] = useState(true);
@@ -210,6 +286,21 @@ export default function WidgetRenderer({ widget, dashboardId, profile, onDataFet
     direction: null,
   });
   const [actionStates, setActionStates] = useState<Record<string, { loading: boolean; error?: string; success?: boolean }>>({});
+  const [inputValue, setInputValue] = useState<string>("");
+  // Ref mirrors inputValue so executeAction always reads the live value (avoids stale closure)
+  const inputValueRef = useRef<string>("");
+  // Only initialize from fetched data once per mount
+  const inputInitialized = useRef(false);
+
+  // Set inputValue from loaded data on first fetch only
+  useEffect(() => {
+    if (!inputInitialized.current && data?.value !== undefined) {
+      const v = String(data.value);
+      setInputValue(v);
+      inputValueRef.current = v;
+      inputInitialized.current = true;
+    }
+  }, [data]);
 
   const executeAction = async (action: any, e: React.MouseEvent) => {
     e.stopPropagation();
@@ -218,7 +309,18 @@ export default function WidgetRenderer({ widget, dashboardId, profile, onDataFet
     setActionStates(prev => ({ ...prev, [actionId]: { loading: true } }));
     
     try {
-      const result = await window.hermesAPI.dashboards.executeAction(action.scriptPath, profile);
+      // Strip the {{value}} placeholder from the script path — the value is now
+      // passed as a clean separate argument, not interpolated into the command string.
+      const scriptPath = action.scriptPath.replace(/\s*\{\{value\}\}/, "").trim();
+      const hasValuePlaceholder = action.scriptPath.includes("{{value}}");
+
+      const result = await window.hermesAPI.dashboards.executeAction(
+        scriptPath,
+        profile,
+        hasValuePlaceholder ? inputValueRef.current : undefined,
+        dashboardId
+      );
+
       if (result?.error) {
         setActionStates(prev => ({ 
           ...prev, 
@@ -301,61 +403,102 @@ export default function WidgetRenderer({ widget, dashboardId, profile, onDataFet
   }
 
   const widgetType = (widget.type || "").toLowerCase().trim();
-  const isActionType = widgetType === "button_group" || widgetType === "action" || widgetType === "buttons";
+  const isActionType = widgetType === "button_group" || widgetType === "action" || widgetType === "buttons" || widgetType === "input" || widgetType === "textarea" || widgetType === "form_input";
 
-  if (!data && !isActionType) return null;
+  if (!data && !isActionType && widgetType !== "input" && widgetType !== "textarea" && widgetType !== "form_input") return null;
   const renderData = data || {};
   const WidgetIcon = widget.config?.icon ? ICON_MAP[widget.config.icon] : null;
 
-  const CardWrapper = ({ children, className = "", onClick }: { children: React.ReactNode, className?: string, onClick?: (e: React.MouseEvent) => void }) => (
-    <div 
-      className={`premium-card h-full w-full p-6 flex flex-col cursor-pointer transition-all hover:scale-[1.01] hover:ring-2 hover:ring-dash-accent/30 group relative overflow-hidden ${className}`}
-      onClick={(e) => {
-        if (onClick) {
-          onClick(e);
-        } else if (onSummarize) {
-          onSummarize(data, widget.title);
-        }
-      }}
-    >
-      <div className="absolute top-2 right-2 opacity-0 group-hover:opacity-100 transition-opacity bg-dash-accent/10 p-1.5 rounded-full text-dash-accent">
-        <Sparkles size={12} />
-      </div>
-      {children}
-      
-      {/* Widget Actions (rendered at the bottom of any regular widget) */}
-      {widget.actions && widget.actions.length > 0 && !isActionType && (
-        <div 
-          className="mt-auto pt-6 flex flex-wrap gap-2 border-t border-slate-100 dark:border-slate-800/50 -mx-6 px-6 bg-slate-50/30 dark:bg-slate-900/10"
-          onClick={(e) => e.stopPropagation()}
-        >
-          {widget.actions.map((action) => {
-            const state = actionStates[action.id || action.label];
-            const ActionIcon = action.icon ? ICON_MAP[action.icon] : null;
-            
-            return (
-              <button
-                key={action.id || action.label}
-                onClick={(e) => executeAction(action, e)}
-                disabled={state?.loading}
-                className={`premium-action-btn ${
-                  state?.error ? "premium-action-btn-error" : 
-                  (state?.success ? "premium-action-btn-success" : 
-                  (normalizeVariant(action.variant) === "primary" ? "premium-action-btn-primary" : 
-                   normalizeVariant(action.variant) === "danger" ? "premium-action-btn-danger" : "premium-action-btn-secondary"))
-                } ${state?.loading ? "loading" : ""}`}
-              >
-                {state?.loading ? <Loader2 className="animate-spin-slow" /> : (ActionIcon && <ActionIcon />)}
-                <span>
-                  {state?.loading ? "Running..." : (state?.error ? "Failed" : (state?.success ? "Success" : action.label))}
-                </span>
-              </button>
-            );
-          })}
+
+  const wrapperProps = {
+    onSummarize,
+    data,
+    title: widget.title,
+    actions: widget.actions,
+    actionStates,
+    executeAction,
+    isActionType
+  };
+
+  // Input/Textarea Rendering
+  if (widgetType === "input" || widgetType === "textarea" || widgetType === "form_input") {
+    const isTextarea = widgetType === "textarea" || widget.config?.multiline;
+    return (
+      <CardWrapper {...wrapperProps}>
+        <div className="mb-4 flex items-center justify-between">
+          <div className="flex items-center gap-3">
+            {WidgetIcon && (
+              <div className="p-2 bg-slate-100 dark:bg-slate-800/50 rounded-xl text-slate-500">
+                <WidgetIcon size={18} />
+              </div>
+            )}
+            <Title className="text-gradient-animated text-xl font-black tracking-tight leading-none">{widget.title}</Title>
+          </div>
         </div>
-      )}
-    </div>
-  );
+        
+        {widget.description && (
+          <Text className="mb-4 text-slate-500 dark:text-slate-400 text-xs font-medium leading-relaxed opacity-80">
+            {widget.description}
+          </Text>
+        )}
+
+        <div className="premium-input-container group" onClick={(e) => e.stopPropagation()}>
+          {isTextarea ? (
+            <textarea
+              className="premium-textarea"
+              placeholder={widget.config?.placeholder || "Type here..."}
+              value={inputValue}
+              onChange={(e) => { setInputValue(e.target.value); inputValueRef.current = e.target.value; }}
+              onKeyDown={(e) => e.stopPropagation()}
+            />
+          ) : (
+            <input
+              type={widget.config?.type || "text"}
+              className="premium-input"
+              placeholder={widget.config?.placeholder || "Type here..."}
+              value={inputValue}
+              onChange={(e) => { setInputValue(e.target.value); inputValueRef.current = e.target.value; }}
+              onKeyDown={(e) => e.stopPropagation()}
+            />
+          )}
+        </div>
+
+        {/* Action Buttons for Input */}
+        {widget.actions && widget.actions.length > 0 && (
+          <div className="mt-6 flex flex-wrap gap-3">
+            {widget.actions.map((action, i) => {
+              const aId = action.id || action.label;
+              const aState = actionStates[aId];
+              
+              let variantClass = "premium-action-btn-secondary";
+              if (action.variant === "primary") variantClass = "premium-action-btn-primary";
+              if (action.variant === "danger") variantClass = "premium-action-btn-danger";
+              if (aState?.success) variantClass = "premium-action-btn-success";
+              if (aState?.error) variantClass = "premium-action-btn-error";
+
+              return (
+                <button
+                  key={aId || i}
+                  onClick={(e) => executeAction(action, e)}
+                  disabled={aState?.loading}
+                  className={`premium-action-btn ${variantClass}`}
+                >
+                  {aState?.loading && <RefreshCw size={14} className="animate-spin" />}
+                  <span>{aState?.success ? "Saved!" : aState?.error ? "Error" : action.label}</span>
+                </button>
+              );
+            })}
+          </div>
+        )}
+
+        {Object.values(actionStates).some(s => s.error) && (
+          <Text className="mt-4 text-rose-500 text-[10px] font-bold uppercase tracking-wider animate-pulse">
+            {Object.values(actionStates).find(s => s.error)?.error}
+          </Text>
+        )}
+      </CardWrapper>
+    );
+  }
 
   // Button Group / Action Rendering
   if (isActionType) {
@@ -369,7 +512,7 @@ export default function WidgetRenderer({ widget, dashboardId, profile, onDataFet
     }] : []);
 
     return (
-      <CardWrapper onClick={(e) => e.stopPropagation()}>
+      <CardWrapper {...wrapperProps} onClick={(e) => e.stopPropagation()}>
         <Title className="text-gradient-animated text-lg font-black tracking-tight mb-4">{widget.title}</Title>
         {widget.description && <Subtitle className="text-slate-400 text-xs font-medium mb-6">{widget.description}</Subtitle>}
         <div className="flex flex-wrap gap-3">
@@ -409,7 +552,7 @@ export default function WidgetRenderer({ widget, dashboardId, profile, onDataFet
   // Metric Rendering
   if (widgetType === "metric" || widgetType === "number") {
     return (
-      <CardWrapper>
+      <CardWrapper {...wrapperProps}>
         <Flex alignItems="start" justifyContent="between">
           <div className="truncate pr-4">
             <Text className="text-slate-500 dark:text-slate-400 font-black uppercase tracking-[0.2em] text-[10px]">
@@ -460,7 +603,7 @@ export default function WidgetRenderer({ widget, dashboardId, profile, onDataFet
     if (!categories || categories.length === 0) categories = ["value"];
 
     return (
-      <CardWrapper className="gap-2">
+      <CardWrapper {...wrapperProps} className="gap-2">
         <div className="mb-2">
           <Title className="text-gradient-animated text-xl font-black tracking-tight">{widget.title}</Title>
           {widget.description && <Subtitle className="text-slate-400 text-xs font-medium">{widget.description}</Subtitle>}
@@ -514,7 +657,7 @@ export default function WidgetRenderer({ widget, dashboardId, profile, onDataFet
     const legendCategories = series.map((item: any) => item[indexKey] || "Other");
 
     return (
-      <CardWrapper>
+      <CardWrapper {...wrapperProps}>
         <div className="mb-6">
           <Title className="text-gradient-animated text-xl font-black tracking-tight">{widget.title}</Title>
           {series.length > 0 && (
@@ -558,7 +701,7 @@ export default function WidgetRenderer({ widget, dashboardId, profile, onDataFet
     const value = renderData.value || 0;
     const color = normalizeColor(widget.color);
     return (
-      <CardWrapper>
+      <CardWrapper {...wrapperProps}>
         <Flex alignItems="start" justifyContent="between" className="mb-8">
           <div>
             <Text className="text-slate-400 font-black uppercase tracking-[0.2em] text-[10px]">{widget.title}</Text>
@@ -616,7 +759,7 @@ export default function WidgetRenderer({ widget, dashboardId, profile, onDataFet
     };
 
     return (
-      <CardWrapper className="p-0 overflow-hidden">
+      <CardWrapper {...wrapperProps} className="p-0 overflow-hidden">
         <div className="p-8 border-b border-slate-200 dark:border-slate-800">
           <Title className="text-gradient-animated text-xl font-black tracking-tight">{widget.title}</Title>
         </div>
@@ -668,10 +811,9 @@ export default function WidgetRenderer({ widget, dashboardId, profile, onDataFet
     );
   }
 
-  // We'll move the action rendering logic higher up in the next chunk
 
   return (
-    <CardWrapper className="border-dashed opacity-40">
+    <CardWrapper {...wrapperProps} className="border-dashed opacity-40">
       <Flex className="h-full flex-col items-center justify-center text-center p-4">
         <AlertCircle className="text-slate-500 mb-2" size={32} />
         <Text className="text-slate-500 font-black uppercase tracking-widest text-[10px]">Unknown Widget: {widgetType}</Text>
