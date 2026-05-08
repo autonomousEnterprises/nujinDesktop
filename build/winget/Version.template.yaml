@@ -1,5 +1,5 @@
 # Generated from this template by scripts/generate-winget-manifests.mjs.
-PackageIdentifier: AutonomousEnterprises.nujinDesktop
+PackageIdentifier: AutonomousEnterprises.NujinDesktop
 PackageVersion: {{VERSION}}
 DefaultLocale: en-US
 ManifestType: version
