@@ -146,6 +146,13 @@ const hermesAPI = {
     ipcRenderer.on("chat-done", handler);
     return () => ipcRenderer.removeListener("chat-done", handler);
   },
+  
+  onChatSessionId: (callback: (sid: string) => void): (() => void) => {
+    const handler = (_event: Electron.IpcRendererEvent, sid: string): void =>
+      callback(sid);
+    ipcRenderer.on("chat-session-id", handler);
+    return () => ipcRenderer.removeListener("chat-session-id", handler);
+  },
 
   onChatToolProgress: (callback: (tool: string) => void): (() => void) => {
     const handler = (_event: Electron.IpcRendererEvent, tool: string): void =>

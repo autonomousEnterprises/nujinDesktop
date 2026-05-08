@@ -198,16 +198,35 @@ function Layout(): React.JSX.Element {
   }, []);
 
   const handleResumeSession = useCallback(async (sessionId: string) => {
-    const dbMessages = await window.hermesAPI.getSessionMessages(sessionId);
-    const chatMessages: ChatMessage[] = dbMessages.map((m) => ({
-      id: `db-${m.id}`,
-      role: m.role === "user" ? "user" : "agent",
-      content: m.content,
-    }));
-    setMessages(chatMessages);
-    setCurrentSessionId(sessionId);
-    setView("chat");
-  }, []);
+    // 1. Try to find a dashboard associated with this session
+    const dashboards = await window.hermesAPI.dashboards.list(activeProfile);
+    let foundDashboardId: string | null = null;
+    
+    for (const id of dashboards) {
+      const config = await window.hermesAPI.dashboards.get(id, activeProfile);
+      if (config && config.sessionId === sessionId) {
+        foundDashboardId = id;
+        break;
+      }
+    }
+
+    if (foundDashboardId) {
+      // It's a dashboard session - switch to dashboards view
+      setSelectedDashboardId(foundDashboardId);
+      setView("dashboards");
+    } else {
+      // It's a normal chat session - load messages and switch to chat view
+      const dbMessages = await window.hermesAPI.getSessionMessages(sessionId);
+      const chatMessages: ChatMessage[] = dbMessages.map((m) => ({
+        id: `db-${m.id}`,
+        role: m.role === "user" ? "user" : "agent",
+        content: m.content,
+      }));
+      setMessages(chatMessages);
+      setCurrentSessionId(sessionId);
+      setView("chat");
+    }
+  }, [activeProfile]);
 
   return (
     <div className="layout">

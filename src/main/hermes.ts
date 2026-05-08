@@ -123,6 +123,7 @@ export interface ChatCallbacks {
   onDone: (sessionId?: string) => void;
   onError: (error: string) => void;
   onToolProgress?: (tool: string) => void;
+  onSessionId?: (sid: string) => void;
   onUsage?: (usage: {
     promptTokens: number;
     completionTokens: number;
@@ -165,6 +166,10 @@ function sendMessageViaApi(
     "Content-Type": "application/json",
     ...getRemoteAuthHeader(),
   };
+
+  if (_resumeSessionId) {
+    headers["X-Hermes-Session-Id"] = _resumeSessionId;
+  }
 
   let sessionId = _resumeSessionId || "";
   let hasContent = false;
@@ -311,7 +316,10 @@ function sendMessageViaApi(
     },
     (res) => {
       const sid = res.headers["x-hermes-session-id"];
-      if (sid && typeof sid === "string") sessionId = sid;
+      if (sid && typeof sid === "string") {
+        sessionId = sid;
+        if (cb.onSessionId) cb.onSessionId(sid);
+      }
 
       if (res.statusCode !== 200) {
         let errBody = "";

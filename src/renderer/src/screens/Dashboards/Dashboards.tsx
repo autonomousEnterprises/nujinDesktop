@@ -26,71 +26,86 @@ export default function Dashboards({ profile, selectedDashboardId, onDashboardSe
   const [dashboardChats, setDashboardChats] = useState<Record<string, ChatMessage[]>>({});
   const [dashboardSessions, setDashboardSessions] = useState<Record<string, string | null>>({});
 
-  const loadDashboardList = useCallback(async () => {
-    const list = await window.hermesAPI.dashboards.list(profile);
-    return list;
-  }, [profile]);
-
-  // Load dashboards on mount
-  useEffect(() => {
-    loadDashboardList();
-  }, [loadDashboardList]);
-
-  // Sync with external selectedDashboardId
-  useEffect(() => {
-    if (selectedDashboardId !== undefined) {
-      if (selectedDashboardId === null) {
-        setCurrentDashboard(null);
-      } else if (selectedDashboardId !== currentDashboard?.id) {
-        switchDashboard(selectedDashboardId);
-      }
-    }
-  }, [selectedDashboardId]);
-
-  // Sync chat when dashboard changes
-  useEffect(() => {
-    const key = currentDashboard ? currentDashboard.id : "new_dashboard";
-    const savedMessages = dashboardChats[key] || [];
-    const savedSession = dashboardSessions[key] || null;
-    setMessages(savedMessages);
-    setCurrentSessionId(savedSession);
-  }, [currentDashboard?.id]);
-
-  // Update persistence when messages or sessionId change
+  // When messages or sessionId change, update our in-memory persistence
   useEffect(() => {
     const key = currentDashboard ? currentDashboard.id : "new_dashboard";
     setDashboardChats(prev => ({ ...prev, [key]: messages }));
     setDashboardSessions(prev => ({ ...prev, [key]: currentSessionId }));
-  }, [messages, currentSessionId]);
+  }, [messages, currentSessionId, currentDashboard?.id]);
+
+  const loadDashboardList = useCallback(async () => {
+    const list = await window.hermesAPI.dashboards.list(profile);
+    return list;
+  }, [profile]);
 
   const switchDashboard = async (id: string) => {
     if (!id) {
       setCurrentDashboard(null);
       return;
     }
+
     const config = await window.hermesAPI.dashboards.get(id, profile);
     if (config) {
-      setCurrentDashboard(config);
+      const sid = config.sessionId || null;
       
-      // If the dashboard has a saved session and we don't have it loaded in memory, fetch it
-      if (config.sessionId && !dashboardChats[config.id]) {
+      // If we're already on this dashboard and session, don't trigger a full reload
+      // which might cause a flicker or race condition with active streams.
+      if (currentDashboard?.id === id && currentSessionId === sid && messages.length > 0) {
+        setCurrentDashboard(config); // Just in case other fields changed
+        return;
+      }
+
+      setCurrentDashboard(config);
+      setCurrentSessionId(sid);
+
+      // If we have a session, try to hydrate from DB
+      if (sid) {
         try {
-          const dbMessages = await window.hermesAPI.getSessionMessages(config.sessionId);
-          const chatMessages: ChatMessage[] = dbMessages.map((m) => ({
-            id: `db-${m.id}`,
-            role: m.role === "user" ? "user" : "agent",
-            content: m.content,
-          }));
-          setDashboardChats(prev => ({ ...prev, [config.id]: chatMessages }));
-          setDashboardSessions(prev => ({ ...prev, [config.id]: config.sessionId! }));
-          setMessages(chatMessages);
-          setCurrentSessionId(config.sessionId);
+          const dbMessages = await window.hermesAPI.getSessionMessages(sid);
+          if (dbMessages && dbMessages.length > 0) {
+            const chatMessages: ChatMessage[] = dbMessages.map((m) => ({
+              id: `db-${m.id || Math.random()}`,
+              role: m.role === "user" ? "user" : "agent",
+              content: m.content,
+            }));
+            setMessages(chatMessages);
+            setDashboardChats(prev => ({ ...prev, [config.id]: chatMessages }));
+          } else {
+            // DB is empty but we have a session ID? 
+            // Fallback to memory cache if available
+            setMessages(dashboardChats[config.id] || []);
+          }
         } catch (err) {
           console.error("Failed to fetch session messages for dashboard", err);
+          setMessages(dashboardChats[config.id] || []);
         }
+      } else {
+        // No session, use memory cache
+        setMessages(dashboardChats[config.id] || []);
       }
     }
   };
+
+  // Sync with external selectedDashboardId
+  useEffect(() => {
+    if (selectedDashboardId !== undefined) {
+      if (selectedDashboardId === null) {
+        if (currentDashboard) handleNewChat();
+      } else if (selectedDashboardId !== currentDashboard?.id) {
+        switchDashboard(selectedDashboardId);
+      }
+    }
+  }, [selectedDashboardId]);
+
+  // Load dashboards on mount
+  useEffect(() => {
+    loadDashboardList();
+  }, [loadDashboardList]);
+
+  const sessionIdRef = useRef<string | null>(null);
+  useEffect(() => {
+    sessionIdRef.current = currentSessionId;
+  }, [currentSessionId]);
 
   // Listen for updates from Hermes background scripts or new dashboard creations
   useEffect(() => {
@@ -101,11 +116,12 @@ export default function Dashboards({ profile, selectedDashboardId, onDashboardSe
           const newId = filename.replace(".json", "");
           window.hermesAPI.dashboards.get(newId, profile).then(config => {
             // Bind the active session to the newly created dashboard
-            if (config && currentSessionId && !config.sessionId) {
-              const updated = { ...config, sessionId: currentSessionId };
+            // We use sessionIdRef to get the absolute latest value even if this closure is stale
+            if (config && sessionIdRef.current && !config.sessionId) {
+              const updated = { ...config, sessionId: sessionIdRef.current };
               window.hermesAPI.dashboards.save(newId, updated, profile);
               switchDashboard(newId);
-            } else {
+            } else if (!currentDashboard) {
               switchDashboard(newId);
             }
           });

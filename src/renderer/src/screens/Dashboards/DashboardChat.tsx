@@ -498,6 +498,13 @@ const DashboardChat = memo(forwardRef<DashboardChatHandle, DashboardChatProps>(f
       setIsLoading(false);
     });
 
+    const cleanupSessionId = window.hermesAPI.onChatSessionId ? window.hermesAPI.onChatSessionId((sid) => {
+      if (sid) {
+        setHermesSessionId(sid);
+        if (onSessionStarted) onSessionStarted(sid);
+      }
+    }) : () => {};
+
     const cleanupError = window.hermesAPI.onChatError((error) => {
       setMessages((prev) => [
         ...prev,
@@ -527,6 +534,7 @@ const DashboardChat = memo(forwardRef<DashboardChatHandle, DashboardChatProps>(f
     return () => {
       cleanupChunk();
       cleanupDone();
+      cleanupSessionId();
       cleanupError();
       cleanupToolProgress();
       cleanupUsage();

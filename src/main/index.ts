@@ -422,6 +422,9 @@ function setupIPC(): void {
           onUsage: (usage) => {
             event.sender.send("chat-usage", usage);
           },
+          onSessionId: (sid) => {
+            event.sender.send("chat-session-id", sid);
+          },
         },
         profile,
         resumeSessionId,
