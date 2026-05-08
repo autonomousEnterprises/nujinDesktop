@@ -2851,6 +2851,32 @@ body {
   align-items: center;
   gap: 6px;
   flex-wrap: wrap;
+  position: relative;
+}
+
+.sessions-card-delete {
+  padding: 4px;
+  border-radius: 4px;
+  color: var(--text-muted);
+  opacity: 0;
+  transition: all var(--transition);
+  background: transparent;
+  border: none;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin-left: auto;
+}
+
+.sessions-card:hover .sessions-card-delete {
+  opacity: 0.6;
+}
+
+.sessions-card-delete:hover {
+  opacity: 1 !important;
+  color: #ef4444 !important;
+  background: rgba(239, 68, 68, 0.1) !important;
 }
 
 .sessions-tag {

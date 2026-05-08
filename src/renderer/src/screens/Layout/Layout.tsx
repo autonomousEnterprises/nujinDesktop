@@ -175,9 +175,17 @@ function Layout(): React.JSX.Element {
       return;
     }
     console.log(`[Layout] Deleting dashboard: ${id}`);
+    
+    // Deep Deletion: Get session ID before deleting config
+    const config = await window.hermesAPI.dashboards.get(id, activeProfile);
+    const sessionId = config?.sessionId;
+
     const success = await window.hermesAPI.dashboards.delete(id, activeProfile);
     console.log(`[Layout] Deletion success: ${success}`);
     if (success) {
+      if (sessionId) {
+        await window.hermesAPI.deleteSession(sessionId);
+      }
       // 1. Small delay to ensure FS is settled
       await new Promise(r => setTimeout(r, 100));
       // 2. Refresh local list
@@ -227,6 +235,34 @@ function Layout(): React.JSX.Element {
       setView("chat");
     }
   }, [activeProfile]);
+
+  const handleDeleteChat = useCallback(async () => {
+    if (!currentSessionId) {
+      setMessages([]);
+      return;
+    }
+
+    if (!window.confirm("Are you sure you want to delete this session and any associated dashboard?")) return;
+
+    // 1. Deep Deletion: Scan dashboards for this session
+    const dashboards = await window.hermesAPI.dashboards.list(activeProfile);
+    for (const id of dashboards) {
+      const config = await window.hermesAPI.dashboards.get(id, activeProfile);
+      if (config && config.sessionId === currentSessionId) {
+        await window.hermesAPI.dashboards.delete(id, activeProfile);
+      }
+    }
+
+    // 2. Delete the session itself
+    await window.hermesAPI.deleteSession(currentSessionId);
+
+    // 3. Reset UI state
+    setMessages([]);
+    setCurrentSessionId(null);
+    
+    // 4. Refresh dashboard list just in case
+    loadDashboardList();
+  }, [currentSessionId, activeProfile, loadDashboardList]);
 
   return (
     <div className="layout">
@@ -343,6 +379,7 @@ function Layout(): React.JSX.Element {
             sessionId={currentSessionId}
             profile={activeProfile}
             onNewChat={handleNewChat}
+            onDelete={handleDeleteChat}
           />
         </div>
         {view === "dashboards" && (

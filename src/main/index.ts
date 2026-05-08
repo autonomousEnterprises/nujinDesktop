@@ -71,7 +71,7 @@ import {
   getPlatformEnabled,
   setPlatformEnabled,
 } from "./config";
-import { listSessions, getSessionMessages, searchSessions } from "./sessions";
+import { listSessions, getSessionMessages, searchSessions, deleteSession } from "./sessions";
 import {
   syncSessionCache,
   listCachedSessions,
@@ -474,6 +474,10 @@ function setupIPC(): void {
 
   ipcMain.handle("get-session-messages", (_event, sessionId: string) => {
     return getSessionMessages(sessionId);
+  });
+
+  ipcMain.handle("delete-session", (_event, sessionId: string) => {
+    return deleteSession(sessionId);
   });
 
   // Profiles

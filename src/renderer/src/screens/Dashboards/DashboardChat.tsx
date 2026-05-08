@@ -269,6 +269,7 @@ interface DashboardChatProps {
   onNewChat?: () => void;
   compact?: boolean;
   dashboardContext?: DashboardConfig;
+  onDelete?: () => void;
 }
 
 export interface DashboardChatHandle {
@@ -284,6 +285,7 @@ const DashboardChat = memo(forwardRef<DashboardChatHandle, DashboardChatProps>(f
   onNewChat,
   compact,
   dashboardContext,
+  onDelete,
 }, ref): React.JSX.Element {
   const { t } = useI18n();
   const [input, setInput] = useState("");
@@ -618,7 +620,8 @@ const DashboardChat = memo(forwardRef<DashboardChatHandle, DashboardChatProps>(f
       ? `[ACTIVE DASHBOARD: "${dashboardContext.title}" — File: ~/.hermes/nujin/dashboards/${dashboardContext.id}.json]\nCurrent Config:\n${JSON.stringify(dashboardContext, null, 2)}`
       : `[NO DASHBOARD YET — Create one by writing a JSON file to ~/.hermes/nujin/dashboards/<id>.json]`;
 
-    const finalMessage = `${NUJIN_SYSTEM_PROMPT}\n\n${dashboardState}\n\n---\nUser Request: ${text}`;
+    const sessionInstruction = hermesSessionId ? `IMPORTANT: You MUST include "sessionId": "${hermesSessionId}" in any dashboard JSON you create or update to ensure history persistence.\n\n` : "";
+    const finalMessage = `${NUJIN_SYSTEM_PROMPT}\n\n${sessionInstruction}${dashboardState}\n\n---\nUser Request: ${text}`;
 
     try {
       await window.hermesAPI.sendMessage(
@@ -913,6 +916,10 @@ const DashboardChat = memo(forwardRef<DashboardChatHandle, DashboardChatProps>(f
   }
 
   function handleClear(): void {
+    if (onDelete) {
+      onDelete();
+      return;
+    }
     // Abort any in-flight request before clearing
     if (isLoading) {
       window.hermesAPI.abortChat();

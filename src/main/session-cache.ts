@@ -171,14 +171,19 @@ export function listCachedSessions(
 }
 
 // Update title for a specific session
-export function updateSessionTitle(
-  sessionId: string,
-  title: string,
-): void {
+export function updateSessionTitle(sessionId: string, title: string): void {
   const cache = readCache();
   const idx = cache.sessions.findIndex((s) => s.id === sessionId);
   if (idx >= 0) {
     cache.sessions[idx].title = title;
     writeCache(cache);
+  }
+}
+
+export function deleteFromCache(sessionId: string): void {
+  const cache = readCache();
+  const filtered = cache.sessions.filter((s) => s.id !== sessionId);
+  if (filtered.length !== cache.sessions.length) {
+    writeCache({ ...cache, sessions: filtered });
   }
 }

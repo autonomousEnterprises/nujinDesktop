@@ -202,9 +202,17 @@ Be sharp, direct, and prioritised. Skip anything that's normal and unremarkable.
 
   const handleDeleteDashboard = useCallback(async (id: string) => {
     console.log(`[Dashboards] Deleting dashboard: ${id}`);
+    
+    // Deep Deletion: Get session ID before deleting config
+    const config = await window.hermesAPI.dashboards.get(id, profile);
+    const sessionId = config?.sessionId;
+
     const success = await window.hermesAPI.dashboards.delete(id, profile);
     console.log(`[Dashboards] Deletion success: ${success}`);
     if (success) {
+      if (sessionId) {
+        await window.hermesAPI.deleteSession(sessionId);
+      }
       // 1. Small delay
       await new Promise(r => setTimeout(r, 100));
       // 2. Refresh the list
@@ -238,6 +246,7 @@ Be sharp, direct, and prioritised. Skip anything that's normal and unremarkable.
               window.hermesAPI.dashboards.save(updated.id, updated, profile);
             }
           }}
+          onDelete={currentDashboard ? () => handleDeleteDashboard(currentDashboard.id) : undefined}
         />
       </aside>
 

@@ -1,5 +1,5 @@
 import { useEffect, useState, useRef, useCallback, memo } from "react";
-import { Plus, Search, X, ChatBubble } from "../../assets/icons";
+import { Plus, Search, X, ChatBubble, Trash } from "../../assets/icons";
 import { useI18n } from "../../components/useI18n";
 
 interface CachedSession {
@@ -103,17 +103,18 @@ function formatModel(model: string): string {
   return name.split(":")[0];
 }
 
-// Memoized session card
 const SessionCard = memo(function SessionCard({
   session,
   isActive,
   showFullDate,
   onClick,
+  onDelete,
 }: {
   session: CachedSession;
   isActive: boolean;
   showFullDate: boolean;
   onClick: () => void;
+  onDelete: (e: React.MouseEvent) => void;
 }) {
   return (
     <button
@@ -142,6 +143,13 @@ const SessionCard = memo(function SessionCard({
             {formatModel(session.model)}
           </span>
         )}
+        <button
+          className="sessions-card-delete"
+          onClick={onDelete}
+          title="Delete session"
+        >
+          <Trash size={12} />
+        </button>
       </div>
     </button>
   );
@@ -194,6 +202,27 @@ function Sessions({
       if (searchTimer.current) clearTimeout(searchTimer.current);
     };
   }, [searchQuery]);
+
+  const handleDeleteSession = async (e: React.MouseEvent, sessionId: string) => {
+    e.stopPropagation();
+    if (!window.confirm("Are you sure you want to delete this session and its associated dashboard?")) return;
+
+    // 1. Delete session
+    await window.hermesAPI.deleteSession(sessionId);
+
+    // 2. Scan and delete associated dashboards
+    const activeProfile = await window.hermesAPI.getConfig("activeProfile");
+    const dashboardIds = await window.hermesAPI.dashboards.list(activeProfile || undefined);
+    for (const id of dashboardIds) {
+      const config = await window.hermesAPI.dashboards.get(id, activeProfile || undefined);
+      if (config && config.sessionId === sessionId) {
+        await window.hermesAPI.dashboards.delete(id, activeProfile || undefined);
+      }
+    }
+
+    // 3. Refresh list
+    loadSessions();
+  };
 
   const isShowingSearch = searchQuery.trim().length > 0;
   const grouped = groupSessions(sessions);
@@ -271,20 +300,27 @@ function Sessions({
                     {highlightSnippet(r.snippet)}
                   </div>
                 )}
-                <div className="sessions-card-tags">
-                  <span className="sessions-tag sessions-tag--source">
-                    {r.source}
-                  </span>
-                  <span className="sessions-tag">
-                    {r.messageCount} {r.messageCount !== 1 ? t("sessions.messages") : t("sessions.messageSingular")}
-                  </span>
-                  {r.model && (
-                    <span className="sessions-tag sessions-tag--model">
-                      {formatModel(r.model)}
+                  <div className="sessions-card-tags">
+                    <span className="sessions-tag sessions-tag--source">
+                      {r.source}
                     </span>
-                  )}
-                </div>
-              </button>
+                    <span className="sessions-tag">
+                      {r.messageCount} {r.messageCount !== 1 ? t("sessions.messages") : t("sessions.messageSingular")}
+                    </span>
+                    {r.model && (
+                      <span className="sessions-tag sessions-tag--model">
+                        {formatModel(r.model)}
+                      </span>
+                    )}
+                    <button
+                      className="sessions-card-delete"
+                      onClick={(e) => handleDeleteSession(e, r.sessionId)}
+                      title="Delete session"
+                    >
+                      <Trash size={12} />
+                    </button>
+                  </div>
+                </button>
             ))}
           </div>
         )
@@ -308,6 +344,7 @@ function Sessions({
                     group.label === "thisWeek" || group.label === "earlier"
                   }
                   onClick={() => onResumeSession(s.id)}
+                  onDelete={(e) => handleDeleteSession(e, s.id)}
                 />
               ))}
             </div>

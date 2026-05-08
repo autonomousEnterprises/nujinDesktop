@@ -210,6 +210,7 @@ interface ChatProps {
   dashboardContext?: DashboardConfig;
   dashboardList?: string[];
   onSwitchDashboard?: (id: string) => void;
+  onDelete?: () => void;
 }
 
 function Chat({
@@ -223,6 +224,7 @@ function Chat({
   dashboardContext,
   dashboardList,
   onSwitchDashboard,
+  onDelete,
 }: ChatProps): React.JSX.Element {
   const { t } = useI18n();
   const [input, setInput] = useState("");
@@ -831,6 +833,10 @@ function Chat({
   }
 
   function handleClear(): void {
+    if (onDelete) {
+      onDelete();
+      return;
+    }
     // Abort any in-flight request before clearing
     if (isLoading) {
       window.hermesAPI.abortChat();

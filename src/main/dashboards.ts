@@ -272,8 +272,54 @@ export function deleteDashboard(id: string, profile?: string): boolean {
   }
   
   try {
+    // 1. Read the dashboard config to find associated scripts/data files
+    const content = fs.readFileSync(path, "utf-8");
+    const config: DashboardConfig = JSON.parse(content);
+    
+    const assetsToRemove = new Set<string>();
+    if (config.widgets) {
+      config.widgets.forEach(w => {
+        if (w.dataSource && (w.dataSource.startsWith("scripts/") || w.dataSource.startsWith("data/"))) {
+          assetsToRemove.add(w.dataSource);
+        }
+      });
+    }
+
+    // 2. Identify assets used by ALL OTHER dashboards to avoid deleting shared scripts
+    const allDashboards = listDashboards(profile);
+    const sharedAssets = new Set<string>();
+    
+    allDashboards.forEach(otherId => {
+      if (otherId === id) return;
+      const otherConfig = getDashboard(otherId, profile);
+      if (otherConfig && otherConfig.widgets) {
+        otherConfig.widgets.forEach(w => {
+          if (w.dataSource && (w.dataSource.startsWith("scripts/") || w.dataSource.startsWith("data/"))) {
+            sharedAssets.add(w.dataSource);
+          }
+        });
+      }
+    });
+
+    // 3. Delete orphaned scripts and data files
+    const hermesHome = getHermesHome(profile);
+    assetsToRemove.forEach(relPath => {
+      if (!sharedAssets.has(relPath)) {
+        const fullPath = join(hermesHome, "nujin", relPath);
+        if (fs.existsSync(fullPath)) {
+          try {
+            fs.unlinkSync(fullPath);
+            console.log(`[Dashboards] Cleaned up orphaned asset: ${relPath}`);
+          } catch (e) {
+            console.error(`[Dashboards] Failed to delete orphaned asset ${relPath}:`, e);
+          }
+        }
+      }
+    });
+
+    // 4. Finally delete the dashboard JSON itself
     fs.unlinkSync(path);
-    console.log(`[Dashboards] Deleted: ${id}`);
+    console.log(`[Dashboards] Deleted dashboard: ${id}`);
     return true;
   } catch (err) {
     console.error(`Error deleting dashboard ${id}:`, err);

@@ -235,6 +235,9 @@ const hermesAPI = {
       timestamp: number;
     }>
   > => ipcRenderer.invoke("get-session-messages", sessionId),
+  
+  deleteSession: (sessionId: string): Promise<boolean> =>
+    ipcRenderer.invoke("delete-session", sessionId),
 
   // Profiles
   listProfiles: (): Promise<

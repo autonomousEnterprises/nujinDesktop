@@ -2,6 +2,7 @@ import Database from "better-sqlite3";
 import { join } from "path";
 import { existsSync } from "fs";
 import { HERMES_HOME } from "./installer";
+import { deleteFromCache } from "./session-cache";
 
 const DB_PATH = join(HERMES_HOME, "state.db");
 
@@ -33,9 +34,31 @@ export interface SearchResult {
   snippet: string;
 }
 
-function getDb(): Database.Database | null {
+function getDb(readonly = true): Database.Database | null {
   if (!existsSync(DB_PATH)) return null;
-  return new Database(DB_PATH, { readonly: true });
+  return new Database(DB_PATH, { readonly });
+}
+
+export function deleteSession(sessionId: string): boolean {
+  const db = getDb(false);
+  if (!db) return false;
+
+  try {
+    db.transaction(() => {
+      // 1. Delete messages (this triggers FTS cleanup via SQLite triggers)
+      db.prepare("DELETE FROM messages WHERE session_id = ?").run(sessionId);
+      // 2. Delete the session itself
+      db.prepare("DELETE FROM sessions WHERE id = ?").run(sessionId);
+    })();
+    // 3. Update the fast local cache
+    deleteFromCache(sessionId);
+    return true;
+  } catch (err) {
+    console.error(`[Sessions] Failed to delete session ${sessionId}:`, err);
+    return false;
+  } finally {
+    db.close();
+  }
 }
 
 export function listSessions(limit = 30, offset = 0): SessionSummary[] {
