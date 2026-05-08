@@ -365,23 +365,18 @@ function Layout(): React.JSX.Element {
       </aside>
 
       <main className="content">
-        <div
-          style={{
-            display: view === "chat" ? "flex" : "none",
-            flex: 1,
-            flexDirection: "column",
-            overflow: "hidden",
-          }}
-        >
-          <Chat
-            messages={messages}
-            setMessages={setMessages}
-            sessionId={currentSessionId}
-            profile={activeProfile}
-            onNewChat={handleNewChat}
-            onDelete={handleDeleteChat}
-          />
-        </div>
+        {view === "chat" && (
+          <div className="flex-1 flex flex-col overflow-hidden">
+            <Chat
+              messages={messages}
+              setMessages={setMessages}
+              sessionId={currentSessionId}
+              profile={activeProfile}
+              onNewChat={handleNewChat}
+              onDelete={handleDeleteChat}
+            />
+          </div>
+        )}
         {view === "dashboards" && (
           <Dashboards 
             profile={activeProfile} 
@@ -425,20 +420,15 @@ function Layout(): React.JSX.Element {
           </div>
         )}
         {view === "models" && <Models />}
-        <div
-          style={{
-            display: view === "providers" ? "flex" : "none",
-            flex: 1,
-            flexDirection: "column",
-            overflow: "hidden",
-          }}
-        >
-          {remoteMode ? (
-            view === "providers" && <RemoteNotice feature="Providers" />
-          ) : (
-            <Providers profile={activeProfile} visible={view === "providers"} />
-          )}
-        </div>
+        {view === "providers" && (
+          <div className="flex-1 flex flex-col overflow-hidden">
+            {remoteMode ? (
+              <RemoteNotice feature="Providers" />
+            ) : (
+              <Providers profile={activeProfile} visible={true} />
+            )}
+          </div>
+        )}
         {view === "skills" &&
           (remoteMode ? (
             <RemoteNotice feature="Skills" />
@@ -475,16 +465,11 @@ function Layout(): React.JSX.Element {
           ) : (
             <Gateway profile={activeProfile} />
           ))}
-        <div
-          style={{
-            display: view === "settings" ? "flex" : "none",
-            flex: 1,
-            flexDirection: "column",
-            overflow: "hidden",
-          }}
-        >
-          <Settings profile={activeProfile} />
-        </div>
+        {view === "settings" && (
+          <div className="flex-1 flex flex-col overflow-hidden">
+            <Settings profile={activeProfile} />
+          </div>
+        )}
       </main>
     </div>
   );
