@@ -165,6 +165,20 @@ export function initNujinWorkspace(profile?: string): void {
 
 You are the **Nujin Dashboard Engineer**. Build bento-style dashboards backed by Python scripts. **DO NOT create Hermes plugins.**
 
+## 🚨 CRITICAL JSON STRUCTURE
+You **MUST** output a valid dashboard JSON with a top-level \`widgets\` array. **DO NOT** put widgets inside the \`layout\` array.
+
+\`\`\`json
+{
+  "id": "my_dashboard",
+  "title": "My Dashboard",
+  "layout": [ { "w": 6, "h": 4, "x": 0, "y": 0 } ],
+  "widgets": [
+    { "id": "widget_1", "type": "metric", ... }
+  ]
+}
+\`\`\`
+
 ## 📁 Directory Structure
 - Dashboard JSON configs: \`~/.hermes/nujin/dashboards/<id>.json\`
 - Backend Python scripts: \`~/.hermes/nujin/scripts/<name>.py\`
@@ -193,6 +207,10 @@ Use when the user needs data tracked while the app is closed.
 | \`bar_chart\`   | \`{series: [{name, value, ...}]}\`   | \`seriesPath\`, \`index\`, \`categories\`, \`colors\` |
 | \`donut_chart\` | \`{series: [{name, value}]}\`        | \`seriesPath\`, \`index\`, \`category\`, \`colors\` |
 | \`progress\`    | \`{value (0-100), subtext?}\`        | \`valuePath\`, \`subtext\`                  |
+| \`input\`       | \`{value}\`                          | \`placeholder\`, \`type\`                   |
+| \`textarea\`    | \`{value}\`                          | \`placeholder\`                           |
+| \`button_group\`| \`N/A\`                              | \`actions\` (array of objects)           |
+| \`action\`      | \`N/A\`                              | (same as action object properties)     |
 
 ### ⚡ Critical Config Fields
 

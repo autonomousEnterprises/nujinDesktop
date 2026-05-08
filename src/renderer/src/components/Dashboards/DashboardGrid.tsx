@@ -43,7 +43,7 @@ const DashboardGrid = forwardRef<DashboardGridHandle, DashboardGridProps>(functi
   }));
   return (
     <div className="@container/dashboard-grid grid grid-cols-1 @min-[600px]:grid-cols-2 @min-[1100px]:grid-cols-3 @min-[1400px]:grid-cols-4 gap-6 md:gap-8 p-1 pb-10 items-start">
-      {dashboard.widgets.map((widget) => {
+      {(dashboard.widgets || []).map((widget) => {
         const widthClass = getWidthClasses(widget);
         
         return (
