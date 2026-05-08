@@ -20,6 +20,8 @@ import {
   CloudRain,
   GitBranch,
 } from "lucide-react";
+import { PROVIDERS } from "../../constants";
+import { useI18n } from "../../components/useI18n";
 
 // ── Nujin Dashboard Protocol (Single Source of Truth) ───
 // This prompt is injected into EVERY message sent from the Dashboard Configurator.
@@ -252,9 +254,6 @@ interface ModelGroup {
   models: { provider: string; model: string; label: string; baseUrl: string }[];
 }
 
-import { PROVIDERS } from "../../constants";
-import { useI18n } from "../../components/useI18n";
-import DashboardDropdown from "../../components/Dashboards/DashboardDropdown";
 interface DashboardConfig {
   id: string;
   title: string;
@@ -270,9 +269,6 @@ interface DashboardChatProps {
   onNewChat?: () => void;
   compact?: boolean;
   dashboardContext?: DashboardConfig;
-  dashboardList?: string[];
-  onSwitchDashboard?: (id: string) => void;
-  onDeleteDashboard?: (id: string) => void;
 }
 
 export interface DashboardChatHandle {
@@ -288,9 +284,6 @@ const DashboardChat = memo(forwardRef<DashboardChatHandle, DashboardChatProps>(f
   onNewChat,
   compact,
   dashboardContext,
-  dashboardList,
-  onSwitchDashboard,
-  onDeleteDashboard,
 }, ref): React.JSX.Element {
   const { t } = useI18n();
   const [input, setInput] = useState("");
@@ -974,14 +967,8 @@ const DashboardChat = memo(forwardRef<DashboardChatHandle, DashboardChatProps>(f
       <div className="chat-header">
         <div className="chat-header-left">
           <div className="chat-header-title">
-            {dashboardContext && dashboardList && onSwitchDashboard ? (
-              <DashboardDropdown 
-                currentId={dashboardContext.id}
-                dashboardList={dashboardList}
-                onSwitch={onSwitchDashboard}
-                onDelete={onDeleteDashboard}
-                label="CONFIGURATOR"
-              />
+            {dashboardContext ? (
+              "Dashboard Configurator"
             ) : sessionId ? (
               t("chat.sessionTitle", { id: sessionId.slice(-6) })
             ) : (

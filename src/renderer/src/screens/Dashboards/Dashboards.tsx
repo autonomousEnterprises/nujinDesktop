@@ -16,7 +16,6 @@ export default function Dashboards({ profile, selectedDashboardId, onDashboardSe
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [currentSessionId, setCurrentSessionId] = useState<string | null>(null);
   const [currentDashboard, setCurrentDashboard] = useState<DashboardConfig | null>(null);
-  const [dashboardList, setDashboardList] = useState<string[]>([]);
   const [isSidebarOpen, setIsSidebarOpen] = useState(true);
   const [refreshKey, setRefreshKey] = useState(0);
   
@@ -29,7 +28,6 @@ export default function Dashboards({ profile, selectedDashboardId, onDashboardSe
 
   const loadDashboardList = useCallback(async () => {
     const list = await window.hermesAPI.dashboards.list(profile);
-    setDashboardList(list);
     return list;
   }, [profile]);
 
@@ -224,12 +222,6 @@ Be sharp, direct, and prioritised. Skip anything that's normal and unremarkable.
               window.hermesAPI.dashboards.save(updated.id, updated, profile);
             }
           }}
-          dashboardList={dashboardList}
-          onSwitchDashboard={(id) => {
-            if (onDashboardSelected) onDashboardSelected(id || null);
-            switchDashboard(id);
-          }}
-          onDeleteDashboard={handleDeleteDashboard}
         />
       </aside>
 
