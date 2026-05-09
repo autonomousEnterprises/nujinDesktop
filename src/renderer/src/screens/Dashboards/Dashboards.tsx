@@ -155,13 +155,22 @@ ${JSON.stringify(data, null, 2)}
 
 **Do NOT repeat or list the raw data back to me.**
 
-Instead, tell me:
-- What does this data actually mean? Is this good, bad, or normal?
-- Are there any standout values, trends, anomalies, or warning signs I should pay attention to?
-- What should I do or watch based on this? Any concrete next steps or things to monitor?
+Analyze the data and give me an executive briefing. 
+You MUST output your response EXACTLY as a single JSON code block with the language "summary" (\`\`\`summary).
+Do not output any other text before or after the JSON block.
 
-Be direct and concise. Write like a smart colleague giving me a quick verbal briefing, not a formal report.`;
-    chatRef.current?.quickAsk(prompt);
+JSON Schema:
+{
+  "what_it_is": "Short 1-2 sentence description of what this data represents",
+  "signal_type": "good" | "warning" | "alert" | "neutral",
+  "signal_reason": "Why this signal was chosen (1 sentence)",
+  "standouts": ["point 1", "point 2"],
+  "next_steps": ["action 1", "action 2"],
+  "bottom_line": "1 sentence conclusion"
+}
+
+Be direct, concise, and write like a smart colleague giving me a quick verbal briefing, not a formal report.`;
+    chatRef.current?.quickAsk(prompt, { type: "summarization", title, data });
   }, [isSidebarOpen]);
 
   const handleSummarizeDashboard = useCallback(() => {
@@ -178,15 +187,23 @@ ${JSON.stringify(allData, null, 2)}
 
 **Do NOT repeat or list the raw numbers back to me.**
 
-Give me an executive-level briefing:
-- What is the overall picture? What story does this data tell right now?
-- What are the most important signals — the things I should actually care about?
-- Are there any anomalies, risks, opportunities, or red flags?
-- What are the 2-3 most important things I should act on or keep an eye on?
+Give me an executive-level briefing.
+You MUST output your response EXACTLY as a single JSON code block with the language "summary" (\`\`\`summary).
+Do not output any other text before or after the JSON block.
+
+JSON Schema:
+{
+  "what_it_is": "Short 1-2 sentence overview of the dashboard's current state",
+  "signal_type": "good" | "warning" | "alert" | "neutral",
+  "signal_reason": "Why this overall signal was chosen (1 sentence)",
+  "standouts": ["anomaly/risk/opportunity 1", "anomaly/risk/opportunity 2"],
+  "next_steps": ["action 1", "action 2"],
+  "bottom_line": "1 sentence executive conclusion"
+}
 
 Be sharp, direct, and prioritised. Skip anything that's normal and unremarkable. Focus on what matters.`;
     
-    chatRef.current?.quickAsk(prompt);
+    chatRef.current?.quickAsk(prompt, { type: "summarization", title: currentDashboard.title, data: allData });
   }, [currentDashboard, isSidebarOpen]);
 
   const handleRefresh = useCallback(async () => {

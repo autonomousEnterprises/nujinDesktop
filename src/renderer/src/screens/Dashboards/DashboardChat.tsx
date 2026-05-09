@@ -7,6 +7,8 @@ import {
   Square as Stop,
   Plus,
   ChevronDown,
+  ChevronRight,
+  Sparkles,
   Search,
   Clock,
   Mail,
@@ -223,6 +225,7 @@ interface MessageRowProps {
   isLoading: boolean;
   onApprove: () => void;
   onDeny: () => void;
+  isSummarizationResponse?: boolean;
 }
 
 const MessageRow = memo(function MessageRow({
@@ -231,16 +234,80 @@ const MessageRow = memo(function MessageRow({
   isLoading,
   onApprove,
   onDeny,
+  isSummarizationResponse,
 }: MessageRowProps): React.JSX.Element {
   const { t } = useI18n();
+  const [isCollapsed, setIsCollapsed] = useState(true);
+
+  let isSummarization = false;
+  let summaryTitle = "AI Summarization";
+  let summaryJson = "";
+
+  if (msg.role === "user") {
+    if (msg.metadata?.type === "summarization") {
+      isSummarization = true;
+      summaryTitle = `AI Summarization: ${msg.metadata.title}`;
+      summaryJson = JSON.stringify(msg.metadata.data, null, 2);
+    } else if (msg.content.includes("You are a data analyst.")) {
+      isSummarization = true;
+      const titleMatch = msg.content.match(/\*\*"(.*?)"\*\*/);
+      if (titleMatch) {
+        summaryTitle = `AI Summarization: ${titleMatch[1]}`;
+      }
+      const jsonMatch = msg.content.match(/```json\n([\s\S]*?)\n```/);
+      if (jsonMatch) {
+        summaryJson = jsonMatch[1];
+      }
+    }
+  }
+
+  const isAgentSummarizationResponse = isSummarizationResponse || (msg.role === "agent" && msg.content.includes("```summary"));
+
+  if (isSummarization) {
+    return (
+      <div className="chat-message chat-message-agent">
+        <div className="chat-avatar chat-avatar-agent" style={{ background: "transparent" }}>
+          <Sparkles size={18} className="text-dash-accent" />
+        </div>
+        <div className="chat-bubble chat-bubble-agent" style={{ width: "100%", background: "var(--bg-card)", border: "1px solid var(--border)", opacity: 0.9 }}>
+          <div className="font-semibold mb-2 flex items-center justify-between text-dash-accent">
+            <span className="flex items-center gap-2">
+              {summaryTitle}
+            </span>
+          </div>
+          <div className="text-xs text-muted-foreground mb-3">
+             Asking AI to analyze the underlying data payload...
+          </div>
+          <div 
+            className="cursor-pointer flex items-center gap-1 text-xs text-dash-accent select-none"
+            onClick={() => setIsCollapsed(!isCollapsed)}
+          >
+            {isCollapsed ? <ChevronRight size={12} /> : <ChevronDown size={12} />}
+            {isCollapsed ? "View raw data payload" : "Hide raw data payload"}
+          </div>
+          {!isCollapsed && summaryJson && (
+            <pre className="mt-3 p-2 bg-black/20 rounded overflow-x-auto text-[10px] text-muted-foreground border border-white/5 whitespace-pre-wrap">
+{summaryJson}
+            </pre>
+          )}
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className={`chat-message chat-message-${msg.role}`}>
       {msg.role === "user" ? (
         <div className="chat-avatar chat-avatar-user">U</div>
+      ) : isAgentSummarizationResponse ? (
+        <div className="chat-avatar chat-avatar-agent" style={{ background: "transparent" }} />
       ) : (
         <HermesAvatar />
       )}
-      <div className={`chat-bubble chat-bubble-${msg.role}`}>
+      <div 
+        className={`chat-bubble chat-bubble-${msg.role}`}
+        style={isAgentSummarizationResponse ? { width: "100%", backgroundColor: "transparent", background: "transparent", border: "none", padding: 0, boxShadow: "none" } : undefined}
+      >
         {msg.role === "agent" ? (
           <AgentMarkdown>{msg.content}</AgentMarkdown>
         ) : (
@@ -271,6 +338,7 @@ export interface ChatMessage {
   id: string;
   role: "user" | "agent";
   content: string;
+  metadata?: any;
 }
 
 interface ModelGroup {
@@ -299,7 +367,7 @@ interface DashboardChatProps {
 
 export interface DashboardChatHandle {
   sendMessage: (text: string) => Promise<void>;
-  quickAsk: (text: string) => Promise<void>;
+  quickAsk: (text: string, metadata?: any) => Promise<void>;
 }
 
 const DashboardChat = memo(forwardRef<DashboardChatHandle, DashboardChatProps>(function DashboardChat({
@@ -335,8 +403,8 @@ const DashboardChat = memo(forwardRef<DashboardChatHandle, DashboardChatProps>(f
     sendMessage: async (text: string) => {
       await handleSendInternal(text);
     },
-    quickAsk: async (text: string) => {
-      await handleQuickAskInternal(text);
+    quickAsk: async (text: string, metadata?: any) => {
+      await handleQuickAskInternal(text, metadata);
     }
   }));
 
@@ -668,7 +736,7 @@ const DashboardChat = memo(forwardRef<DashboardChatHandle, DashboardChatProps>(f
     await handleSendInternal(input);
   }
 
-  const handleQuickAskInternal = async (text: string) => {
+  const handleQuickAskInternal = async (text: string, metadata?: any) => {
     if (!text || isLoading) return;
     // /btw sends an ephemeral side question that doesn't pollute conversation context
     setInput("");
@@ -676,7 +744,12 @@ const DashboardChat = memo(forwardRef<DashboardChatHandle, DashboardChatProps>(f
     setIsLoading(true);
     setMessages((prev) => [
       ...prev,
-      { id: `user-btw-${Date.now()}`, role: "user", content: `💭 ${text}` },
+      { 
+        id: `user-btw-${Date.now()}`, 
+        role: "user", 
+        content: `💭 ${text}`,
+        metadata
+      },
     ]);
     try {
       await window.hermesAPI.sendMessage(
@@ -1009,6 +1082,13 @@ const DashboardChat = memo(forwardRef<DashboardChatHandle, DashboardChatProps>(f
     [messages],
   );
 
+  const isPendingSummarization = useMemo(() => {
+    if (messages.length === 0) return false;
+    const lastMsg = messages[messages.length - 1];
+    if (lastMsg.role !== "user") return false;
+    return lastMsg.metadata?.type === "summarization" || lastMsg.content.includes("You are a data analyst.");
+  }, [messages]);
+
   return (
     <div className={`chat-container ${compact ? "chat-compact" : ""}`}>
       <div className="chat-header">
@@ -1134,24 +1214,43 @@ const DashboardChat = memo(forwardRef<DashboardChatHandle, DashboardChatProps>(f
           </div>
         )
       ) : (
-          visibleMessages.map((msg, i) => (
-            <MessageRow
-              key={msg.id}
-              msg={msg}
-              isLast={i === visibleMessages.length - 1}
-              isLoading={isLoading}
-              onApprove={handleApprove}
-              onDeny={handleDeny}
-            />
-          ))
+          visibleMessages.map((msg, i) => {
+            const prevMsg = i > 0 ? visibleMessages[i - 1] : null;
+            let isSummarizationResp = false;
+            if (msg.role === "agent" && prevMsg?.role === "user") {
+              isSummarizationResp = prevMsg.metadata?.type === "summarization" || prevMsg.content.includes("You are a data analyst.");
+            }
+            return (
+              <MessageRow
+                key={msg.id}
+                msg={msg}
+                isLast={i === visibleMessages.length - 1}
+                isLoading={isLoading}
+                onApprove={handleApprove}
+                onDeny={handleDeny}
+                isSummarizationResponse={isSummarizationResp}
+              />
+            );
+          })
         )}
 
         {isLoading && !lastMessageIsAgent && (
           <div className="chat-message chat-message-agent">
-            <HermesAvatar />
-            <div className="chat-bubble chat-bubble-agent">
+            {isPendingSummarization ? (
+              <div className="chat-avatar chat-avatar-agent" style={{ background: "transparent" }} />
+            ) : (
+              <HermesAvatar />
+            )}
+            <div 
+              className="chat-bubble chat-bubble-agent"
+              style={isPendingSummarization ? { background: "transparent", border: "none", padding: 0, boxShadow: "none" } : undefined}
+            >
               {toolProgress ? (
                 <div className="chat-tool-progress">{toolProgress}</div>
+              ) : isPendingSummarization ? (
+                <div className="text-sm text-dash-accent animate-pulse flex items-center gap-2 font-medium">
+                  <Activity size={14} className="animate-spin-slow" /> Analyzing data...
+                </div>
               ) : (
                 <div className="chat-typing">
                   <span className="chat-typing-dot" />
