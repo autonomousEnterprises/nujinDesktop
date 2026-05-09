@@ -307,36 +307,39 @@ const MessageRow = memo(function MessageRow({
       ) : (
         <HermesAvatar />
       )}
-      <div 
-        className={`chat-bubble chat-bubble-${msg.role}`}
-        style={isAgentSummarizationResponse ? { width: "100%", backgroundColor: "transparent", background: "transparent", border: "none", padding: 0, boxShadow: "none" } : undefined}
-      >
+      <div className="flex flex-col gap-2 w-full min-w-0">
         {msg.toolSteps && msg.toolSteps.length > 0 && (
-          <div className="p-3 pr-4 rounded-lg border border-slate-500/20 bg-slate-500/5 w-full mb-3">
-            <div className="text-xs font-semibold uppercase tracking-wider text-muted-foreground mb-3 flex items-center gap-1.5 break-words">
-              <Wrench size={14} className="shrink-0" /> AI WORKFLOW
-            </div>
-            <ul className="space-y-2 m-0 p-0 list-none">
-              {msg.toolSteps.map((step, i) => {
-                const isLastStep = i === msg.toolSteps!.length - 1;
-                return (
-                  <li key={i} className={`text-sm flex gap-2 items-start leading-relaxed text-foreground/90 break-words whitespace-normal min-w-0 transition-opacity duration-300 ${(isLastStep && isLoading && isLast) ? "opacity-100" : "opacity-60"}`}>
-                    {(isLastStep && isLoading && isLast) ? (
-                      <div className="shrink-0 mt-1.5 w-2 h-2 rounded-full bg-dash-accent animate-pulse" />
+          <div className="flex flex-col gap-1.5 mb-1 pl-3 border-l-2 border-slate-200 dark:border-slate-800 ml-1">
+            {msg.toolSteps.map((step, i) => {
+              const isLastStep = i === msg.toolSteps!.length - 1;
+              const isActive = isLastStep && isLoading && isLast;
+              return (
+                <div key={i} className={`flex items-start gap-2.5 text-[13px] transition-opacity duration-300 ${isActive ? "opacity-100" : "opacity-50"}`}>
+                  <div className="mt-0.5 shrink-0 w-3.5 flex justify-center">
+                    {isActive ? (
+                      <Activity size={14} className="animate-pulse text-dash-accent" />
                     ) : (
-                      <CheckCircle size={14} className="text-emerald-500 shrink-0 mt-0.5" />
+                      <CheckCircle size={14} className="text-emerald-500/60" />
                     )}
-                    <span className="min-w-0 flex-1 break-words whitespace-normal pr-2 leading-relaxed">{step}</span>
-                  </li>
-                );
-              })}
-            </ul>
+                  </div>
+                  <span className="text-muted-foreground break-words whitespace-normal leading-relaxed min-w-0 flex-1 font-medium">{step}</span>
+                </div>
+              );
+            })}
           </div>
         )}
-        {msg.role === "agent" ? (
-          <AgentMarkdown>{msg.content}</AgentMarkdown>
-        ) : (
-          msg.content
+
+        {(msg.content.trim() !== "" || isAgentSummarizationResponse) && (
+          <div 
+            className={`chat-bubble chat-bubble-${msg.role}`}
+            style={isAgentSummarizationResponse ? { width: "100%", backgroundColor: "transparent", background: "transparent", border: "none", padding: 0, boxShadow: "none" } : undefined}
+          >
+            {msg.role === "agent" ? (
+              <AgentMarkdown>{msg.content}</AgentMarkdown>
+            ) : (
+              msg.content
+            )}
+          </div>
         )}
       </div>
       {msg.role === "agent" &&
