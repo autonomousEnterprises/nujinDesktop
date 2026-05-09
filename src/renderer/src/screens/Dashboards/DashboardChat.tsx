@@ -299,6 +299,7 @@ interface DashboardChatProps {
 
 export interface DashboardChatHandle {
   sendMessage: (text: string) => Promise<void>;
+  quickAsk: (text: string) => Promise<void>;
 }
 
 const DashboardChat = memo(forwardRef<DashboardChatHandle, DashboardChatProps>(function DashboardChat({
@@ -333,6 +334,9 @@ const DashboardChat = memo(forwardRef<DashboardChatHandle, DashboardChatProps>(f
   useImperativeHandle(ref, () => ({
     sendMessage: async (text: string) => {
       await handleSendInternal(text);
+    },
+    quickAsk: async (text: string) => {
+      await handleQuickAskInternal(text);
     }
   }));
 
@@ -664,8 +668,7 @@ const DashboardChat = memo(forwardRef<DashboardChatHandle, DashboardChatProps>(f
     await handleSendInternal(input);
   }
 
-  async function handleQuickAsk(): Promise<void> {
-    const text = input.trim();
+  const handleQuickAskInternal = async (text: string) => {
     if (!text || isLoading) return;
     // /btw sends an ephemeral side question that doesn't pollute conversation context
     setInput("");
@@ -685,6 +688,10 @@ const DashboardChat = memo(forwardRef<DashboardChatHandle, DashboardChatProps>(f
     } catch {
       // Error already handled by onChatError IPC listener — avoid duplicate
     }
+  };
+
+  async function handleQuickAsk(): Promise<void> {
+    await handleQuickAskInternal(input.trim());
   }
 
   function handleKeyDown(e: React.KeyboardEvent): void {

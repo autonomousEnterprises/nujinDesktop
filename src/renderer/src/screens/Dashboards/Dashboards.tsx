@@ -161,7 +161,7 @@ Instead, tell me:
 - What should I do or watch based on this? Any concrete next steps or things to monitor?
 
 Be direct and concise. Write like a smart colleague giving me a quick verbal briefing, not a formal report.`;
-    chatRef.current?.sendMessage(prompt);
+    chatRef.current?.quickAsk(prompt);
   }, [isSidebarOpen]);
 
   const handleSummarizeDashboard = useCallback(() => {
@@ -186,7 +186,7 @@ Give me an executive-level briefing:
 
 Be sharp, direct, and prioritised. Skip anything that's normal and unremarkable. Focus on what matters.`;
     
-    chatRef.current?.sendMessage(prompt);
+    chatRef.current?.quickAsk(prompt);
   }, [currentDashboard, isSidebarOpen]);
 
   const handleRefresh = useCallback(async () => {
