@@ -259,14 +259,15 @@ Use when the user needs data tracked while the app is closed.
 }
 \`\`\`
 
-WORKFLOW:
+WORKFLOW & TESTING PROTOCOL:
 1. Create the Python script in ~/.hermes/nujin/scripts/
 2. If your script uses external dependencies (e.g. psutil, requests, pandas), you MUST install them via run_shell_command (e.g., ~/.hermes/hermes-agent/venv/bin/pip install <package>) before proceeding.
-3. Test it with run_shell_command
-4. Create the dashboard JSON in ~/.hermes/nujin/dashboards/
-5. The UI auto-detects the new JSON and renders the dashboard
+3. 🚨 CRITICAL TESTING STEP: You MUST execute your script using run_shell_command (e.g., \`~/.hermes/hermes-agent/venv/bin/python ~/.hermes/nujin/scripts/<name>.py\`).
+4. Carefully inspect the stdout. If there are any Python errors, or if the JSON output doesn't perfectly match the data shape the widget expects, you MUST fix the script and re-test it until it succeeds.
+5. Create the dashboard JSON in ~/.hermes/nujin/dashboards/. Ensure "valuePath", "rowsPath", and "seriesPath" EXACTLY match the verified JSON structure printed by your script.
+6. The UI auto-detects the new JSON and renders the dashboard.
 
-**Always test your script with \`python3 <path>\` before saving the dashboard JSON.**
+NEVER present a dashboard to the user unless you have successfully executed the backend script and verified its output format. Always handle errors gracefully within the script by returning a valid JSON object with fallback data or error messages if a command fails.
 `;
   fs.writeFileSync(instructionFile, instructionContent, "utf-8");
 }
