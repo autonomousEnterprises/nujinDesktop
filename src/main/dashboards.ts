@@ -2,7 +2,7 @@ import { join } from "path";
 import fs from "fs";
 import { getHermesHome } from "./config";
 import { HERMES_PYTHON } from "./installer";
-import { BrowserWindow } from "electron";
+import { BrowserWindow, app } from "electron";
 import { execFile } from "child_process";
 import { promisify } from "util";
 
@@ -159,117 +159,21 @@ export function initNujinWorkspace(profile?: string): void {
     }
   });
 
-  // Write INSTRUCTION.md as a convenience mirror for CLI / Hermes agent usage.
-  // The authoritative source of truth is NUJIN_SYSTEM_PROMPT in DashboardChat.tsx.
-  const instructionContent = `# Nujin Dashboard Protocol — v2
-
-You are the **Nujin Dashboard Engineer**. Build bento-style dashboards backed by Python scripts. **DO NOT create Hermes plugins.**
-
-## 🚨 CRITICAL JSON STRUCTURE
-You **MUST** output a valid dashboard JSON with a top-level \`widgets\` array. **DO NOT** put widgets inside the \`layout\` array.
-
-\`\`\`json
-{
-  "id": "my_dashboard",
-  "title": "My Dashboard",
-  "layout": [ { "w": 6, "h": 4, "x": 0, "y": 0 } ],
-  "widgets": [
-    { "id": "widget_1", "type": "metric", ... }
-  ]
-}
-\`\`\`
-
-## 📁 Directory Structure
-- Dashboard JSON configs: \`~/.hermes/nujin/dashboards/<id>.json\`
-- Backend Python scripts: \`~/.hermes/nujin/scripts/<name>.py\`
-- Persistent state / cache: \`~/.hermes/nujin/state/<dashboardId>.json\` (ONE file per dashboard)
-
-## 🔌 Data Architecture (Two Modes)
-
-### On-Demand (Default)
-Script prints JSON to **stdout**. The app executes it when the dashboard is viewed.
-- Set widget \`"dataSource": "scripts/<name>.py"\`
-
-### Persistent Background (Cron)
-Use when the user needs data tracked while the app is closed.
-1. Script writes JSON to \`~/.hermes/nujin/state/<dashboardId>.json\` (all widget states in one file)
-2. Schedule: \`hermes cron create "*/5 * * * *" --name "Nujin <name>" -- "~/.hermes/hermes-agent/venv/bin/python ~/.hermes/nujin/scripts/<name>.py"\`
-3. Set widget \`"dataSource": "state/<key>"\` (NO .json — key is the field name inside the state file)
-
-## 📊 Supported Widget Types (EXACT names)
-
-| type          | Data shape expected                | Config fields                          |
-|---------------|------------------------------------|----------------------------------------|
-| \`metric\`      | \`{value, delta?, subtext?}\`        | \`valuePath\`, \`subtext\`, \`icon\`          |
-| \`table\`       | \`{headers, rows}\`                  | \`rowsPath\`, \`columns\`                   |
-| \`area_chart\`  | \`{series: [{date, value, ...}]}\`   | \`seriesPath\`, \`index\`, \`categories\`, \`colors\` |
-| \`line_chart\`  | \`{series: [{date, value, ...}]}\`   | \`seriesPath\`, \`index\`, \`categories\`, \`colors\` |
-| \`bar_chart\`   | \`{series: [{name, value, ...}]}\`   | \`seriesPath\`, \`index\`, \`categories\`, \`colors\` |
-| \`donut_chart\` | \`{series: [{name, value}]}\`        | \`seriesPath\`, \`index\`, \`category\`, \`colors\` |
-| \`progress\`    | \`{value (0-100), subtext?}\`        | \`valuePath\`, \`subtext\`                  |
-| \`input\`       | \`{value}\`                          | \`placeholder\`, \`type\`                   |
-| \`textarea\`    | \`{value}\`                          | \`placeholder\`                           |
-| \`button_group\`| \`N/A\`                              | \`actions\` (array of objects)           |
-| \`action\`      | \`N/A\`                              | (same as action object properties)     |
-
-### ⚡ Critical Config Fields
-
-- **\`valuePath\`**: Dot-notation path to extract a value from nested JSON. Example: if your script returns \`{"cpu": {"total_percent": 1.3}}\`, set \`"valuePath": "cpu.total_percent"\` and the widget will show \`1.3\`.
-- **\`rowsPath\`**: Dot-notation path to an array of objects for table rows. Example: \`"rowsPath": "processes"\`.
-- **\`seriesPath\`**: Dot-notation path to an array of data points for charts. Example: \`"seriesPath": "history"\`.
-- **\`columns\`**: Array of column names for tables. Example: \`["pid", "name", "cpu_percent"]\`.
-
-## 📏 Layout
-- \`gridSize\`: \`small\`, \`medium\`, \`large\`, \`wide\`, \`tall\`, \`full\`
-- \`color\`: \`blue\`, \`emerald\`, \`indigo\`, \`rose\`, \`amber\`, \`cyan\`, \`violet\`, \`orange\`
-
-## 📋 Full Example
-
-\`\`\`json
-{
-  "id": "system_monitor",
-  "title": "System Monitor",
-  "layout": {"type": "grid", "columns": 12, "gap": "lg"},
-  "widgets": [
-    {
-      "id": "cpu",
-      "type": "metric",
-      "title": "CPU Usage",
-      "gridSize": "medium",
-      "color": "blue",
-      "dataSource": "scripts/sysmon.py",
-      "refreshInterval": 10,
-      "config": {
-        "valuePath": "cpu.total_percent",
-        "subtext": "Live CPU"
+  // Copy built-in skills to ~/.hermes/skills/
+  const builtInSkillsDir = join(app.getAppPath(), "skills");
+  const hermesSkillsDir = join(hermesHome, "skills");
+  
+  if (fs.existsSync(builtInSkillsDir)) {
+    try {
+      if (!fs.existsSync(hermesSkillsDir)) {
+        fs.mkdirSync(hermesSkillsDir, { recursive: true });
       }
-    },
-    {
-      "id": "procs",
-      "type": "table",
-      "title": "Top Processes",
-      "gridSize": "wide",
-      "dataSource": "scripts/sysmon.py",
-      "config": {
-        "rowsPath": "processes",
-        "columns": ["pid", "name", "cpu_percent", "rss_bytes"]
-      }
+      fs.cpSync(builtInSkillsDir, hermesSkillsDir, { recursive: true });
+      console.log(`[Dashboards] Copied built-in skills from ${builtInSkillsDir} to ${hermesSkillsDir}`);
+    } catch (e) {
+      console.error(`[Dashboards] Failed to copy built-in skills:`, e);
     }
-  ]
-}
-\`\`\`
-
-WORKFLOW & TESTING PROTOCOL:
-1. Create the Python script in ~/.hermes/nujin/scripts/
-2. If your script uses external dependencies (e.g. psutil, requests, pandas), you MUST install them via run_shell_command (e.g., ~/.hermes/hermes-agent/venv/bin/pip install <package>) before proceeding.
-3. 🚨 CRITICAL TESTING STEP: You MUST execute your script using run_shell_command (e.g., \`~/.hermes/hermes-agent/venv/bin/python ~/.hermes/nujin/scripts/<name>.py\`).
-4. Carefully inspect the stdout. If there are any Python errors, or if the JSON output doesn't perfectly match the data shape the widget expects, you MUST fix the script and re-test it until it succeeds.
-5. Create the dashboard JSON in ~/.hermes/nujin/dashboards/. Ensure "valuePath", "rowsPath", and "seriesPath" EXACTLY match the verified JSON structure printed by your script.
-6. The UI auto-detects the new JSON and renders the dashboard.
-
-NEVER present a dashboard to the user unless you have successfully executed the backend script and verified its output format. Always handle errors gracefully within the script by returning a valid JSON object with fallback data or error messages if a command fails.
-`;
-  fs.writeFileSync(instructionFile, instructionContent, "utf-8");
+  }
 }
 
 export function listDashboards(profile?: string): string[] {
@@ -462,13 +366,13 @@ export async function getWidgetData(dashboardId: string, dataSource: string, pro
   if (dataSource.startsWith("state/") && !dataSource.endsWith(".json") && !dataSource.includes(".py")) {
     const stateKey = dataSource.slice("state/".length);
     const stateFile = join(hermesHome, "nujin", "state", `${dashboardId}.json`);
-    if (!fs.existsSync(stateFile)) return { value: "" };
+    if (!fs.existsSync(stateFile)) return { [stateKey]: "" };
     try {
       const content = fs.readFileSync(stateFile, "utf-8");
       const all = JSON.parse(content);
-      return { value: all[stateKey] ?? "" };
+      return { [stateKey]: all[stateKey] ?? "" };
     } catch {
-      return { value: "" };
+      return { [stateKey]: "" };
     }
   }
 
