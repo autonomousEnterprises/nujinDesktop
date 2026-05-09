@@ -15,6 +15,9 @@ import {
   Bell,
   Slash,
   Zap,
+  Activity,
+  CheckCircle,
+  Wrench,
 } from "lucide-react";
 
 // ── Slash Commands ──────────────────────────────────────
@@ -157,11 +160,36 @@ const MessageRow = memo(function MessageRow({
       ) : (
         <HermesAvatar />
       )}
-      <div className={`chat-bubble chat-bubble-${msg.role}`}>
-        {msg.role === "agent" ? (
-          <AgentMarkdown>{msg.content}</AgentMarkdown>
-        ) : (
-          msg.content
+      <div className="flex flex-col gap-2 w-full min-w-0">
+        {msg.toolSteps && msg.toolSteps.length > 0 && (
+          <div className="flex flex-col gap-1.5 mb-1 pl-3 border-l-2 border-slate-200 dark:border-slate-800 ml-1">
+            {msg.toolSteps.map((step, i) => {
+              const isLastStep = i === msg.toolSteps!.length - 1;
+              const isActive = isLastStep && isLoading && isLast;
+              return (
+                <div key={i} className={`flex items-start gap-2.5 text-[13px] transition-opacity duration-300 ${isActive ? "opacity-100" : "opacity-50"}`}>
+                  <div className="mt-0.5 shrink-0 w-3.5 flex justify-center">
+                    {isActive ? (
+                      <Activity size={14} className="animate-pulse text-dash-accent" />
+                    ) : (
+                      <CheckCircle size={14} className="text-emerald-500/60" />
+                    )}
+                  </div>
+                  <span className="text-muted-foreground break-words whitespace-normal leading-relaxed min-w-0 flex-1 font-medium">{step}</span>
+                </div>
+              );
+            })}
+          </div>
+        )}
+        
+        {msg.content.trim() !== "" && (
+          <div className={`chat-bubble chat-bubble-${msg.role}`}>
+            {msg.role === "agent" ? (
+              <AgentMarkdown>{msg.content}</AgentMarkdown>
+            ) : (
+              msg.content
+            )}
+          </div>
         )}
       </div>
       {msg.role === "agent" &&
@@ -188,6 +216,8 @@ export interface ChatMessage {
   id: string;
   role: "user" | "agent";
   content: string;
+  metadata?: any;
+  toolSteps?: string[];
 }
 
 interface ModelGroup {
@@ -230,7 +260,6 @@ function Chat({
   const [input, setInput] = useState("");
   const [isLoading, setIsLoading] = useState(false);
   const [hermesSessionId, setHermesSessionId] = useState<string | null>(sessionId);
-  const [toolProgress, setToolProgress] = useState<string | null>(null);
   const [usage, setUsage] = useState<{
     promptTokens: number;
     completionTokens: number;
@@ -429,7 +458,6 @@ function Chat({
         setHermesSessionId(sid);
         if (onSessionStarted) onSessionStarted(sid);
       }
-      setToolProgress(null);
       setIsLoading(false);
     });
 
@@ -442,12 +470,23 @@ function Chat({
           content: `Error: ${error}`,
         },
       ]);
-      setToolProgress(null);
       setIsLoading(false);
     });
 
     const cleanupToolProgress = window.hermesAPI.onChatToolProgress((tool) => {
-      setToolProgress(tool);
+      setMessages((prev) => {
+        const last = prev[prev.length - 1];
+        if (last && last.role === "agent") {
+          return [
+            ...prev.slice(0, -1),
+            { ...last, toolSteps: [...(last.toolSteps || []), tool] },
+          ];
+        }
+        return [
+          ...prev,
+          { id: `agent-${Date.now()}`, role: "agent", content: "", toolSteps: [tool] },
+        ];
+      });
     });
 
     const cleanupUsage = window.hermesAPI.onChatUsage((u) => {
@@ -845,7 +884,6 @@ function Chat({
     setMessages([]);
     setHermesSessionId(null);
     setUsage(null);
-    setToolProgress(null);
   }
 
   const handleApprove = useCallback(() => {
@@ -875,7 +913,7 @@ function Chat({
   }, [profile, hermesSessionId, setMessages, messages]);
 
   const visibleMessages = useMemo(
-    () => messages.filter((m) => m.content.trim()),
+    () => messages.filter((m) => m.content.trim() || (m.toolSteps && m.toolSteps.length > 0)),
     [messages],
   );
 
@@ -1076,21 +1114,13 @@ function Chat({
           <div className="chat-message chat-message-agent">
             <HermesAvatar />
             <div className="chat-bubble chat-bubble-agent">
-              {toolProgress ? (
-                <div className="chat-tool-progress">{toolProgress}</div>
-              ) : (
-                <div className="chat-typing">
-                  <span className="chat-typing-dot" />
-                  <span className="chat-typing-dot" />
-                  <span className="chat-typing-dot" />
-                </div>
-              )}
+              <div className="chat-typing">
+                <span className="chat-typing-dot" />
+                <span className="chat-typing-dot" />
+                <span className="chat-typing-dot" />
+              </div>
             </div>
           </div>
-        )}
-
-        {isLoading && toolProgress && lastMessageIsAgent && (
-          <div className="chat-tool-progress-inline">{toolProgress}</div>
         )}
 
         <div ref={messagesEndRef} />

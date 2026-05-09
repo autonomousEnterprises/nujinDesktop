@@ -21,6 +21,8 @@ import {
   LineChart,
   CloudRain,
   GitBranch,
+  CheckCircle,
+  Wrench,
 } from "lucide-react";
 import { PROVIDERS } from "../../constants";
 import { useI18n } from "../../components/useI18n";
@@ -308,6 +310,28 @@ const MessageRow = memo(function MessageRow({
         className={`chat-bubble chat-bubble-${msg.role}`}
         style={isAgentSummarizationResponse ? { width: "100%", backgroundColor: "transparent", background: "transparent", border: "none", padding: 0, boxShadow: "none" } : undefined}
       >
+        {msg.toolSteps && msg.toolSteps.length > 0 && (
+          <div className="p-3 pr-4 rounded-lg border border-slate-500/20 bg-slate-500/5 w-full mb-3">
+            <div className="text-xs font-semibold uppercase tracking-wider text-muted-foreground mb-3 flex items-center gap-1.5 break-words">
+              <Wrench size={14} className="shrink-0" /> AI WORKFLOW
+            </div>
+            <ul className="space-y-2 m-0 p-0 list-none">
+              {msg.toolSteps.map((step, i) => {
+                const isLastStep = i === msg.toolSteps!.length - 1;
+                return (
+                  <li key={i} className={`text-sm flex gap-2 items-start leading-relaxed text-foreground/90 break-words whitespace-normal min-w-0 transition-opacity duration-300 ${(isLastStep && isLoading && isLast) ? "opacity-100" : "opacity-60"}`}>
+                    {(isLastStep && isLoading && isLast) ? (
+                      <div className="shrink-0 mt-1.5 w-2 h-2 rounded-full bg-dash-accent animate-pulse" />
+                    ) : (
+                      <CheckCircle size={14} className="text-emerald-500 shrink-0 mt-0.5" />
+                    )}
+                    <span className="min-w-0 flex-1 break-words whitespace-normal pr-2 leading-relaxed">{step}</span>
+                  </li>
+                );
+              })}
+            </ul>
+          </div>
+        )}
         {msg.role === "agent" ? (
           <AgentMarkdown>{msg.content}</AgentMarkdown>
         ) : (
@@ -339,6 +363,7 @@ export interface ChatMessage {
   role: "user" | "agent";
   content: string;
   metadata?: any;
+  toolSteps?: string[];
 }
 
 interface ModelGroup {
@@ -385,7 +410,6 @@ const DashboardChat = memo(forwardRef<DashboardChatHandle, DashboardChatProps>(f
   const [input, setInput] = useState("");
   const [isLoading, setIsLoading] = useState(false);
   const [hermesSessionId, setHermesSessionId] = useState<string | null>(sessionId);
-  const [toolProgress, setToolProgress] = useState<string | null>(null);
   const [usage, setUsage] = useState<{
     promptTokens: number;
     completionTokens: number;
@@ -593,7 +617,6 @@ const DashboardChat = memo(forwardRef<DashboardChatHandle, DashboardChatProps>(f
         setHermesSessionId(sid);
         if (onSessionStarted) onSessionStarted(sid);
       }
-      setToolProgress(null);
       setIsLoading(false);
     });
 
@@ -613,12 +636,23 @@ const DashboardChat = memo(forwardRef<DashboardChatHandle, DashboardChatProps>(f
           content: `Error: ${error}`,
         },
       ]);
-      setToolProgress(null);
       setIsLoading(false);
     });
 
     const cleanupToolProgress = window.hermesAPI.onChatToolProgress((tool) => {
-      setToolProgress(tool);
+      setMessages((prev) => {
+        const last = prev[prev.length - 1];
+        if (last && last.role === "agent") {
+          return [
+            ...prev.slice(0, -1),
+            { ...last, toolSteps: [...(last.toolSteps || []), tool] },
+          ];
+        }
+        return [
+          ...prev,
+          { id: `agent-${Date.now()}`, role: "agent", content: "", toolSteps: [tool] },
+        ];
+      });
     });
 
     const cleanupUsage = window.hermesAPI.onChatUsage((u) => {
@@ -1033,7 +1067,6 @@ const DashboardChat = memo(forwardRef<DashboardChatHandle, DashboardChatProps>(f
     setMessages([]);
     setHermesSessionId(null);
     setUsage(null);
-    setToolProgress(null);
   }
 
   const handleApprove = useCallback(() => {
@@ -1063,7 +1096,7 @@ const DashboardChat = memo(forwardRef<DashboardChatHandle, DashboardChatProps>(f
   }, [profile, hermesSessionId, setMessages, messages]);
 
   const visibleMessages = useMemo(
-    () => messages.filter((m) => m.content.trim()),
+    () => messages.filter((m) => m.content.trim() || (m.toolSteps && m.toolSteps.length > 0)),
     [messages],
   );
 
@@ -1245,9 +1278,7 @@ const DashboardChat = memo(forwardRef<DashboardChatHandle, DashboardChatProps>(f
               className="chat-bubble chat-bubble-agent"
               style={isPendingSummarization ? { background: "transparent", border: "none", padding: 0, boxShadow: "none" } : undefined}
             >
-              {toolProgress ? (
-                <div className="chat-tool-progress">{toolProgress}</div>
-              ) : isPendingSummarization ? (
+              {isPendingSummarization ? (
                 <div className="text-sm text-dash-accent animate-pulse flex items-center gap-2 font-medium">
                   <Activity size={14} className="animate-spin-slow" /> Analyzing data...
                 </div>
@@ -1260,10 +1291,6 @@ const DashboardChat = memo(forwardRef<DashboardChatHandle, DashboardChatProps>(f
               )}
             </div>
           </div>
-        )}
-
-        {isLoading && toolProgress && lastMessageIsAgent && (
-          <div className="chat-tool-progress-inline">{toolProgress}</div>
         )}
 
         <div ref={messagesEndRef} />
