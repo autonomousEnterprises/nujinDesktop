@@ -24,26 +24,25 @@
 }
 
 .chat-sidebar.closed {
-  width: 0;
+  width: 0 !important;
   border-right: none;
   opacity: 0;
   pointer-events: none;
 }
 
+.chat-sidebar.resizing {
+  transition: none; /* Disable transition during resize for smooth dragging */
+}
+
 .full-chat .chat-sidebar {
-  width: 100%;
+  width: 100% !important;
   border-right: none;
 }
 
-.split-view .chat-sidebar.open {
-  width: 420px;
-}
-
-.sidebar-toggle {
+.sidebar-toggle.closed {
   position: absolute;
   top: 50%;
-  left: 404px;
-  /* Open position: sidebar width (420) - half toggle width (16) */
+  left: 4px;
   transform: translateY(-50%);
   width: 32px;
   height: 32px;
@@ -59,12 +58,67 @@
   transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
 }
 
-.sidebar-toggle.closed {
-  left: 4px;
-  /* Closed position: near the left edge */
+.sidebar-toggle.closed:hover {
+  background: var(--accent);
+  color: white;
+  border-color: var(--accent);
 }
 
-.sidebar-toggle:hover {
+.sidebar-resizer {
+  width: 16px;
+  background: transparent;
+  cursor: col-resize;
+  position: relative;
+  z-index: 100;
+  margin-left: -8px;
+  margin-right: -8px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: background 0.2s;
+}
+
+.sidebar-resizer:hover, .sidebar-resizer:active {
+  background: rgba(255, 255, 255, 0.03);
+}
+
+.sidebar-resizer::after {
+  content: '';
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  left: 7px;
+  width: 2px;
+  background: transparent;
+  transition: background 0.2s;
+}
+
+.sidebar-resizer:hover::after, .sidebar-resizer:active::after {
+  background: var(--border-bright);
+}
+
+.sidebar-resizer-handle {
+  width: 24px;
+  height: 24px;
+  min-width: 24px;
+  min-height: 24px;
+  max-width: 24px;
+  max-height: 24px;
+  flex-shrink: 0;
+  background: var(--bg-elevated);
+  border: 1px solid var(--border-bright);
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--text-secondary);
+  cursor: pointer;
+  z-index: 101;
+  transition: all 0.2s;
+  pointer-events: auto; /* Required because the resizer is col-resize */
+}
+
+.sidebar-resizer-handle:hover {
   background: var(--accent);
   color: white;
   border-color: var(--accent);

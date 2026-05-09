@@ -22,6 +22,54 @@ export default function Dashboards({ profile, selectedDashboardId, onDashboardSe
   const chatRef = useRef<DashboardChatHandle>(null);
   const gridRef = useRef<DashboardGridHandle>(null);
 
+  // Resizable sidebar state
+  const [sidebarWidth, setSidebarWidth] = useState(() => {
+    const saved = localStorage.getItem("nujin_dashboard_sidebar_width");
+    return saved ? parseInt(saved, 10) : 420;
+  });
+  const [isDragging, setIsDragging] = useState(false);
+  const isResizing = useRef(false);
+
+  const handleMouseDown = useCallback((e: React.MouseEvent) => {
+    e.preventDefault();
+    isResizing.current = true;
+    setIsDragging(true);
+    document.body.style.cursor = "col-resize";
+    document.body.style.userSelect = "none";
+  }, []);
+
+  useEffect(() => {
+    const handleMouseMove = (e: MouseEvent) => {
+      if (!isResizing.current) return;
+      let newWidth = e.clientX;
+      if (newWidth < 300) newWidth = 300;
+      if (newWidth > 800) newWidth = 800;
+      setSidebarWidth(newWidth);
+    };
+
+    const handleMouseUp = () => {
+      if (isResizing.current) {
+        isResizing.current = false;
+        setIsDragging(false);
+        document.body.style.cursor = "default";
+        document.body.style.userSelect = "auto";
+        
+        // Save final width to localStorage
+        setSidebarWidth((prev) => {
+          localStorage.setItem("nujin_dashboard_sidebar_width", prev.toString());
+          return prev;
+        });
+      }
+    };
+
+    document.addEventListener("mousemove", handleMouseMove);
+    document.addEventListener("mouseup", handleMouseUp);
+    return () => {
+      document.removeEventListener("mousemove", handleMouseMove);
+      document.removeEventListener("mouseup", handleMouseUp);
+    };
+  }, []);
+
   // Persistence for chats per dashboard
   const [dashboardChats, setDashboardChats] = useState<Record<string, ChatMessage[]>>({});
   const [dashboardSessions, setDashboardSessions] = useState<Record<string, string | null>>({});
@@ -245,7 +293,10 @@ Be sharp, direct, and prioritised. Skip anything that's normal and unremarkable.
 
   return (
     <div className={`dashboards-screen ${currentDashboard ? "split-view" : "full-chat"}`}>
-      <aside className={`chat-sidebar ${isSidebarOpen ? "open" : "closed"}`}>
+      <aside 
+        className={`chat-sidebar ${isSidebarOpen ? "open" : "closed"} ${isDragging ? "resizing" : ""}`}
+        style={currentDashboard ? { width: isSidebarOpen ? sidebarWidth : 0 } : undefined}
+      >
         <DashboardChat
           ref={chatRef}
           messages={messages}
@@ -267,13 +318,35 @@ Be sharp, direct, and prioritised. Skip anything that's normal and unremarkable.
         />
       </aside>
 
-      {currentDashboard && (
-        <button 
-          className={`sidebar-toggle ${isSidebarOpen ? "open" : "closed"}`} 
-          onClick={() => setIsSidebarOpen(!isSidebarOpen)}
-          title={isSidebarOpen ? "Hide Chat" : "Show Chat"}
+      {currentDashboard && isSidebarOpen && (
+        <div 
+          className="sidebar-resizer"
+          onMouseDown={handleMouseDown}
+          onDoubleClick={() => {
+            setSidebarWidth(420);
+            localStorage.setItem("nujin_dashboard_sidebar_width", "420");
+          }}
         >
-          {isSidebarOpen ? <ChevronLeft size={16} /> : <ChevronRight size={16} />}
+          <div 
+            className="sidebar-resizer-handle"
+            onClick={(e) => {
+              e.stopPropagation();
+              setIsSidebarOpen(false);
+            }}
+            title="Hide Chat"
+          >
+            <ChevronLeft size={14} />
+          </div>
+        </div>
+      )}
+
+      {currentDashboard && !isSidebarOpen && (
+        <button 
+          className="sidebar-toggle closed" 
+          onClick={() => setIsSidebarOpen(true)}
+          title="Show Chat"
+        >
+          <ChevronRight size={16} />
         </button>
       )}
       
