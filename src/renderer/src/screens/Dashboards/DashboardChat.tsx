@@ -98,9 +98,10 @@ LAYOUT OPTIONS:
 
 WORKFLOW:
 1. Create the Python script in ~/.hermes/nujin/scripts/
-2. Test it with run_shell_command
-3. Create the dashboard JSON in ~/.hermes/nujin/dashboards/
-4. The UI auto-detects the new JSON and renders the dashboard
+2. If your script uses external dependencies (e.g. psutil, requests, pandas), you MUST install them via run_shell_command (e.g., ~/.hermes/hermes-agent/venv/bin/pip install <package>) before proceeding.
+3. Test it with run_shell_command
+4. Create the dashboard JSON in ~/.hermes/nujin/dashboards/
+5. The UI auto-detects the new JSON and renders the dashboard
 
 Always test your script before saving the dashboard JSON. Always handle errors gracefully by returning valid JSON even on failure.`;
 
