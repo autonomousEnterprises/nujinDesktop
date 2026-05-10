@@ -73,7 +73,7 @@ const SmartMessageRenderer = memo(function SmartMessageRenderer({ children }: Sm
         // Partial JSON or invalid - fall back to markdown
       }
     }
-  }
+
 
 
   // Fallback to normal markdown
