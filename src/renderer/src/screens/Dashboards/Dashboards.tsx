@@ -70,16 +70,13 @@ export default function Dashboards({ profile, selectedDashboardId, onDashboardSe
     };
   }, []);
 
-  // Persistence for chats per dashboard
   const [dashboardChats, setDashboardChats] = useState<Record<string, ChatMessage[]>>({});
-  const [dashboardSessions, setDashboardSessions] = useState<Record<string, string | null>>({});
 
-  // When messages or sessionId change, update our in-memory persistence
+  // When messages change, update our in-memory persistence
   useEffect(() => {
     const key = currentDashboard ? currentDashboard.id : "new_dashboard";
     setDashboardChats(prev => ({ ...prev, [key]: messages }));
-    setDashboardSessions(prev => ({ ...prev, [key]: currentSessionId }));
-  }, [messages, currentSessionId, currentDashboard?.id]);
+  }, [messages, currentDashboard?.id]);
 
   const loadDashboardList = useCallback(async () => {
     const list = await window.hermesAPI.dashboards.list(profile);
@@ -183,8 +180,6 @@ export default function Dashboards({ profile, selectedDashboardId, onDashboardSe
   }, [currentDashboard, profile, loadDashboardList]);
 
   const handleNewChat = useCallback(() => {
-    setDashboardChats(prev => ({ ...prev, new_dashboard: [] }));
-    setDashboardSessions(prev => ({ ...prev, new_dashboard: null }));
     setMessages([]);
     setCurrentSessionId(null);
     setCurrentDashboard(null);

@@ -1,7 +1,6 @@
 import { useState, useEffect, useRef } from "react";
 import "./Widgets.css";
 import {
-  Card,
   Metric,
   Text,
   Title,
@@ -10,7 +9,6 @@ import {
   BarChart,
   AreaChart,
   DonutChart,
-  Legend,
   Table,
   TableHead,
   TableRow,
@@ -22,7 +20,6 @@ import {
   Flex,
   ProgressBar,
   ProgressCircle,
-  Button,
 } from "@tremor/react";
 import {
   TrendingUp,
@@ -43,10 +40,6 @@ import {
   Sparkles,
   Loader2,
   RefreshCw,
-  Settings,
-  FileText,
-  Shield,
-  Play
 } from "lucide-react";
 import { WidgetConfig } from "../../../../main/dashboards";
 import { formatValue, formatCellValue } from "./formatUtils";
@@ -166,7 +159,7 @@ function transformData(raw: any, widget: WidgetConfig): any {
 
   if (["area_chart", "line_chart", "bar_chart", "chart", "donut_chart", "donut"].includes(wType)) {
     const sPath = cfg.seriesPath || cfg.series_path;
-    let series = [];
+    let series: any[] = [];
     
     if (sPath) {
       series = getNestedValue(raw, sPath) || [];

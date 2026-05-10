@@ -53,13 +53,14 @@ const ICON_MAP: Record<string, any> = {
 };
 
 interface VisualBlock {
-  type: "text" | "metrics" | "list" | "steps" | "status" | "code" | "table";
+  type: "text" | "metrics" | "list" | "steps" | "status" | "code" | "table" | "news";
   title?: string;
   content?: string;
   items?: any[];
   language?: string;
   columns?: string[];
   rows?: any[][];
+  status?: string;
 }
 
 interface VisualData {

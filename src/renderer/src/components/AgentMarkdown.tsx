@@ -213,6 +213,9 @@ const AgentMarkdown = memo(function AgentMarkdown({ children }: { children: stri
           const child = React.Children.toArray(children)[0];
           if (
             React.isValidElement(child) &&
+            child.props &&
+            typeof child.props === "object" &&
+            "className" in child.props &&
             child.props.className === "language-summary"
           ) {
             // Strip the <pre> formatting entirely for summarization blocks

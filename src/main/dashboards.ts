@@ -59,6 +59,10 @@ async function executeScript(scriptPathWithArgs: string, cwd: string): Promise<a
   const scriptPath = parts[0]?.replace(/^"|"$/g, '');
   const args = parts.slice(1).map(arg => arg.replace(/^"|"$/g, ''));
 
+  if (!scriptPath) {
+    return { error: "Invalid script path", details: "Script path could not be parsed from dataSource" };
+  }
+
   const tryRun = async (interpreter: string) => {
     const { stdout } = await execFileAsync(interpreter, [scriptPath, ...args], {
       timeout: 60_000,
@@ -140,7 +144,6 @@ export function initNujinWorkspace(profile?: string): void {
   const scriptsDir = join(nujinDir, "scripts");
   const stateDir = join(nujinDir, "state");
   const oldDataDir = join(nujinDir, "data");
-  const instructionFile = join(nujinDir, "INSTRUCTION.md");
 
   // Migration: Rename data to state if it exists
   if (fs.existsSync(oldDataDir) && !fs.existsSync(stateDir)) {
@@ -302,7 +305,6 @@ export function deleteDashboard(id: string, profile?: string): boolean {
 
 export async function getWidgetData(dashboardId: string, dataSource: string, profile?: string): Promise<any> {
   console.log(`[Dashboards] getWidgetData: ${dataSource}`);
-  const dir = getDashboardsDir(profile);
   const hermesHome = getHermesHome(profile);
 
   // ── Script-Driven Data (.py) ──────────────────────────────────────────────
@@ -407,6 +409,10 @@ export async function executeDashboardAction(scriptPath: string, profile?: strin
   const relPath = parts[0]?.replace(/^"|"$/g, '');
   const staticArgs = parts.slice(1).map(a => a.replace(/^"|"$/g, ''));
 
+  if (!relPath) {
+    return { error: "Invalid script path", details: "Script path could not be parsed" };
+  }
+
   const absoluteScriptPath = relPath.startsWith("/")
     ? relPath
     : join(hermesHome, "nujin", relPath);
@@ -459,7 +465,7 @@ export async function executeDashboardAction(scriptPath: string, profile?: strin
   }
 
   // Invalidate cache for this script so the next fetch is fresh
-  if (!result?.error) {
+  if (!result?.error && relPath) {
     for (const key of scriptResultCache.keys()) {
       if (key.startsWith(relPath)) scriptResultCache.delete(key);
     }
@@ -483,7 +489,7 @@ export function watchDashboards(mainWindow: BrowserWindow, profile?: string): vo
     watcher.close();
   }
 
-  watcher = fs.watch(dir, (eventType, filename) => {
+  watcher = fs.watch(dir, (_eventType, filename) => {
     if (filename) {
       mainWindow.webContents.send("dashboard-updated", filename);
     }

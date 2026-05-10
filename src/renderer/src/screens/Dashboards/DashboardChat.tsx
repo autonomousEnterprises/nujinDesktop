@@ -7,22 +7,13 @@ import {
   Square as Stop,
   Plus,
   ChevronDown,
-  ChevronRight,
-  Sparkles,
-  Search,
-  Clock,
-  Mail,
-  Code,
-  ChartLine,
-  Bell,
+
   Slash,
   Zap,
   Activity,
   LineChart,
   CloudRain,
   GitBranch,
-  CheckCircle,
-  Wrench,
 } from "lucide-react";
 import { PROVIDERS } from "../../constants";
 import { useI18n } from "../../components/useI18n";
@@ -151,8 +142,7 @@ function HermesAvatar({ size = 30 }: { size?: number }): React.JSX.Element {
 
 export { AgentMarkdown };
 
-const APPROVAL_RE =
-  /⚠️.*dangerous|requires? (your )?approval|\/approve.*\/deny|do you want (me )?to (proceed|continue|run|execute)/i;
+// APPROVAL_RE removed (unused)
 
 import ChatMessageRow from "../../components/ChatMessageRow";
 
@@ -170,11 +160,7 @@ interface ModelGroup {
   models: { provider: string; model: string; label: string; baseUrl: string }[];
 }
 
-interface DashboardConfig {
-  id: string;
-  title: string;
-  [key: string]: any;
-}
+import { DashboardConfig } from "../../../../main/dashboards";
 
 interface DashboardChatProps {
   messages: ChatMessage[];
@@ -542,7 +528,7 @@ const DashboardChat = memo(forwardRef<DashboardChatHandle, DashboardChatProps>(f
       ...prev,
       { id: `user-${Date.now()}`, role: "user", content: displayText || text },
     ]);
-    onSessionStarted?.(hermesSessionId || "");
+    if (onSessionStarted && hermesSessionId) onSessionStarted(hermesSessionId);
 
     // Always inject the full Nujin protocol + current dashboard context
     const dashboardState = dashboardContext
@@ -1196,11 +1182,6 @@ const DashboardChat = memo(forwardRef<DashboardChatHandle, DashboardChatProps>(f
                       className={`chat-model-option ${currentModel === m.model && currentProvider === m.provider ? "active" : ""}`}
                       onClick={() => {
                         selectModel(m.provider, m.model, m.baseUrl);
-                        if (action.command) {
-                          window.dispatchEvent(new CustomEvent("hermes:send-message", { 
-                            detail: { message: action.command } 
-                          }));
-                        }
                       }}
                     >
                       <span className="chat-model-option-label">{m.label}</span>

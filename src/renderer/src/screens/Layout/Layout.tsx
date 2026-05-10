@@ -164,10 +164,7 @@ function Layout(): React.JSX.Element {
     };
   }, [handleNewChat]);
 
-  const handleSwitchDashboard = useCallback((id: string | null) => {
-    setSelectedDashboardId(id);
-    if (id) setView("dashboards");
-  }, []);
+
 
   const handleDeleteDashboard = useCallback(async (e: React.MouseEvent, id: string) => {
     e.stopPropagation();

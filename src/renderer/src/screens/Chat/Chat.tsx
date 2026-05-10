@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef, useCallback, useMemo, memo } from "react";
+import { useState, useEffect, useRef, useCallback, useMemo } from "react";
 import icon from "../../assets/icon.png";
 import { AgentMarkdown } from "../../components/AgentMarkdown";
 import {
@@ -15,9 +15,6 @@ import {
   Bell,
   Slash,
   Zap,
-  Activity,
-  CheckCircle,
-  Wrench,
 } from "lucide-react";
 
 // ── Slash Commands ──────────────────────────────────────
@@ -134,9 +131,7 @@ function HermesAvatar({ size = 30 }: { size?: number }): React.JSX.Element {
 
 export { AgentMarkdown };
 
-const APPROVAL_RE =
-  /⚠️.*dangerous|requires? (your )?approval|\/approve.*\/deny|do you want (me )?to (proceed|continue|run|execute)/i;
-
+import { DashboardConfig } from "../../../../main/dashboards";
 import ChatMessageRow from "../../components/ChatMessageRow";
 
 export interface ChatMessage {
@@ -504,7 +499,7 @@ function Chat({
       ...prev,
       { id: `user-${Date.now()}`, role: "user", content: displayText || text },
     ]);
-    onSessionStarted?.();
+    // onSessionStarted is called when session actually starts via onChatDone listener
 
     // Dashboard context is handled exclusively by DashboardChat.tsx
     const finalMessage = text;

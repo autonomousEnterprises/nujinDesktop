@@ -81,6 +81,7 @@ interface HermesAPI {
   abortChat: () => Promise<void>;
   onChatChunk: (callback: (chunk: string) => void) => () => void;
   onChatDone: (callback: (sessionId?: string) => void) => () => void;
+  onChatSessionId: (callback: (sid: string) => void) => () => void;
   onChatToolProgress: (callback: (tool: string) => void) => () => void;
   onChatUsage: (
     callback: (usage: {
@@ -131,6 +132,7 @@ interface HermesAPI {
       timestamp: number;
     }>
   >;
+  deleteSession: (sessionId: string) => Promise<boolean>;
 
   // Profiles
   listProfiles: () => Promise<
@@ -439,12 +441,19 @@ interface HermesAPI {
     list: (profile?: string) => Promise<string[]>;
     get: (id: string, profile?: string) => Promise<any>;
     save: (id: string, config: any, profile?: string) => Promise<boolean>;
+    delete: (id: string, profile?: string) => Promise<boolean>;
     getWidgetData: (
       dashboardId: string,
       dataSource: string,
       profile?: string,
     ) => Promise<any>;
-    executeAction: (scriptPath: string, profile?: string) => Promise<any>;
+    executeAction: (
+      scriptPath: string,
+      profile?: string,
+      inputValue?: string,
+      dashboardId?: string,
+    ) => Promise<any>;
+    clearCache: () => Promise<boolean>;
     onUpdate: (callback: (filename: string) => void) => () => void;
   };
 }
