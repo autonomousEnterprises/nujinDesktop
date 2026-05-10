@@ -23,12 +23,14 @@ const LOCAL_API_URL = "http://127.0.0.1:8642";
  */
 const VISUAL_RESPONSE_PROTOCOL = `
 ### MANDATORY COCKPIT PROTOCOL (GOD MODE)
-1. **RESPONSE START**: Start your response IMMEDIATELY with \`\`\`json. 
+1. **RESEARCH-ONLY**: Use this JSON protocol ONLY for Research, Market Data, News, or Complex Analysis.
+2. **SIMPLE TALK**: For greetings, simple questions, or basic talk, use PLAIN TEXT markdown.
+3. **RESPONSE START**: If performing Research, start IMMEDIATELY with \`\`\`json.
    - **NO INTRO**: No "Searching...", no "Here is...". Just the JSON.
-2. **FIDELITY**: COPY-PASTE data and URLs from tool outputs. 
+4. **FIDELITY**: COPY-PASTE data and URLs from tool outputs. 
    - **ZERO HALLUCINATIONS**: Never guess prices, facts or URLs.
-3. **STRUCTURE**: Use "metrics", "news", and "actions".
-4. **ACTIONS**: Suggested actions are MANDATORY.
+5. **STRUCTURE**: Use "metrics", "news", and "actions".
+6. **ACTIONS**: Suggested actions are MANDATORY.
 
 \`\`\`json
 {
@@ -211,8 +213,12 @@ function sendMessageViaApi(
   // Build full conversation from history + current message (standard OpenAI format)
   const messages: Array<{ role: string; content: string }> = [];
 
-  // 1. Initial System Message with full protocol
-  messages.push({ role: "system", content: VISUAL_RESPONSE_PROTOCOL });
+  const isBtw = message.trim().startsWith("/btw");
+
+  // 1. Initial System Message with full protocol (ONLY if not a /btw summary)
+  if (!isBtw) {
+    messages.push({ role: "system", content: VISUAL_RESPONSE_PROTOCOL });
+  }
 
   // 2. Add history
   if (history && history.length > 0) {
@@ -224,9 +230,13 @@ function sendMessageViaApi(
     }
   }
 
-  // 3. Add current message with a forceful reminder suffix
-  const reminderSuffix = "\n\n(GOD MODE: START WITH JSON. NO INTRO. NO TALK. COPY-PASTE FROM TOOLS ONLY. ZERO HALLUCINATIONS.)";
-  messages.push({ role: "user", content: message + reminderSuffix });
+  // 3. Add current message with a forceful reminder suffix (ONLY if not a /btw summary)
+  if (!isBtw) {
+    const reminderSuffix = "\n\n(GOD MODE: Use JSON ONLY for Research. For simple talk, use plain text. If Research: START WITH JSON. NO INTRO. NO TALK. COPY-PASTE ONLY.)";
+    messages.push({ role: "user", content: message + reminderSuffix });
+  } else {
+    messages.push({ role: "user", content: message });
+  }
 
   const body = JSON.stringify({
     model: mc.model || "hermes-agent",
