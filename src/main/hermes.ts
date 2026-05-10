@@ -23,14 +23,15 @@ const LOCAL_API_URL = "http://127.0.0.1:8642";
  */
 const VISUAL_RESPONSE_PROTOCOL = `
 ### MANDATORY COCKPIT PROTOCOL (GOD MODE)
-1. **RESEARCH-ONLY**: Use this JSON protocol ONLY for Research, Market Data, News, or Complex Analysis.
-2. **SIMPLE TALK**: For greetings, simple questions, or basic talk, use PLAIN TEXT markdown.
-3. **RESPONSE START**: If performing Research, start IMMEDIATELY with \`\`\`json.
-   - **NO INTRO**: No "Searching...", no "Here is...". Just the JSON.
-4. **FIDELITY**: COPY-PASTE data and URLs from tool outputs. 
-   - **ZERO HALLUCINATIONS**: Never guess prices, facts or URLs.
+1. **RESEARCH-ONLY**: Use JSON ONLY for Research/Data. Simple talk = Plain Text.
+2. **RESPONSE START**: Start IMMEDIATELY with \`\`\`json. NO INTRO.
+3. **PREVENT TRUNCATION (CRITICAL)**: 
+   - **LIMIT NEWS**: Max 3 news items. 
+   - **SHORT SUMMARIES**: Max 1 concise sentence per news item.
+   - **NO BLOAT**: Do not repeat massive tool outputs. Summarize ONLY.
+4. **FIDELITY**: COPY-PASTE data and URLs from tool outputs. Zero Hallucinations.
 5. **STRUCTURE**: Use "metrics", "news", and "actions".
-6. **ACTIONS**: Suggested actions are MANDATORY.
+6. **ACTIONS**: MANDATORY. Suggest 2 steps.
 
 \`\`\`json
 {
