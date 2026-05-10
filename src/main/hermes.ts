@@ -22,29 +22,28 @@ const LOCAL_API_URL = "http://127.0.0.1:8642";
  * for rich, visually appealing responses in Nujin Desktop.
  */
 const VISUAL_RESPONSE_PROTOCOL = `
-### ZERO TOLERANCE FOR HALLUCINATIONS (CRITICAL)
-1. **DATA FIDELITY AUDIT**: 
-   - **NO TRAINING DATA**: Never use your training data for current prices (BTC, Stocks, Oil). 
-   - **COPY-PASTE ONLY**: Every number, percentage, and URL MUST be a direct copy-paste from a tool output in THIS turn. 
-   - **GUESSING = FAILURE**: If a tool does not provide a specific data point, DO NOT guess it. DO NOT invent URLs. 
-2. **RICH MODE (Mandatory for Research)**:
-   - **JSON WRAPPING**: ALWAYS wrap JSON in \`\`\`json ... \`\`\`.
-   - **DEEP LINKS ONLY**: Every "url" MUST be the direct link from search results. No root domains. No invented paths.
-   - **MANDATORY ACTIONS**: Suggested actions are NOT optional.
-3. **BLOCK TYPES**:
+### JSON-FIRST ARCHITECTURE (STRICT)
+1. **START WITH JSON**: Every RICH MODE response MUST start with the \`\`\`json block. 
+   - **NO INTRO**: Do not write "Here is your data..." or "Searching...". Start with the JSON.
+   - **NO TRUNCATION**: By putting JSON first, you ensure the user sees the cockpit even if the rest of the text is long.
+2. **ZERO TOLERANCE FOR HALLUCINATIONS**: 
+   - **COPY-PASTE ONLY**: Every metric, price, and URL MUST be a direct copy from a tool output in THIS turn. 
+   - **NO TRAINING DATA**: Never use training data for current prices (BTC, Oil, etc.).
+3. **MANDATORY ACTIONS**: Suggest 2-3 logical next steps in the "actions" field.
+4. **BLOCK TYPES**:
    - "metrics": label, value, unit, trend.
    - "news": title, summary, url (DEEP LINK), source.
    - "table": For structured comparisons.
-   - "text": Brief (1-2 sentence) summary.
+   - "text": ONLY for the final analysis/conclusion (placed after the JSON).
 
 \`\`\`json
 {
   "visual": {
-    "title": "Goal",
-    "subtitle": "Context",
+    "title": "Dashboard Goal",
+    "subtitle": "Brief context",
     "status": "success",
     "blocks": [
-      { "type": "metrics", "items": [{"label": "L", "value": "COPY_PASTE_VALUE", "unit": "U", "trend": "up"}] }
+      { "type": "metrics", "items": [{"label": "L", "value": "COPY_PASTE", "unit": "U", "trend": "up"}] }
     ],
     "sources": [{"label": "S", "url": "COPY_PASTE_DEEP_LINK"}],
     "actions": [{"label": "L", "command": "/c", "displayText": "D"}]
@@ -231,7 +230,7 @@ function sendMessageViaApi(
   }
 
   // 3. Add current message with a forceful reminder suffix
-  const reminderSuffix = "\n\n(ULTRA-STRICT: ZERO TOLERANCE FOR HALLUCINATIONS. COPY-PASTE numbers and URLs from tool outputs ONLY. NEVER guess or use training data for prices. Fidelity is your life.)";
+  const reminderSuffix = "\n\n(ULTRA-STRICT: JSON-FIRST ARCHITECTURE. Start your response with the \`\`\`json block. NO INTRO. NO TALK. COPY-PASTE data from tools ONLY. Zero Hallucinations.)";
   messages.push({ role: "user", content: message + reminderSuffix });
 
   const body = JSON.stringify({
