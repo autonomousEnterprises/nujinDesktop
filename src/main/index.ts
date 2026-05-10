@@ -382,10 +382,12 @@ function setupIPC(): void {
         message,
         {
           onChunk: (chunk) => {
+            if (event.sender.isDestroyed()) return;
             fullResponse += chunk;
             event.sender.send("chat-chunk", chunk);
           },
           onDone: (sessionId) => {
+            if (event.sender.isDestroyed()) return;
             currentChatAbort = null;
             event.sender.send("chat-done", sessionId || "");
             resolveChat({ response: fullResponse, sessionId });
@@ -406,6 +408,7 @@ function setupIPC(): void {
             }
           },
           onError: (error) => {
+            if (event.sender.isDestroyed()) return;
             currentChatAbort = null;
             event.sender.send("chat-error", error);
             rejectChat(new Error(error));
@@ -418,12 +421,15 @@ function setupIPC(): void {
             }
           },
           onToolProgress: (tool) => {
+            if (event.sender.isDestroyed()) return;
             event.sender.send("chat-tool-progress", tool);
           },
           onUsage: (usage) => {
+            if (event.sender.isDestroyed()) return;
             event.sender.send("chat-usage", usage);
           },
           onSessionId: (sid) => {
+            if (event.sender.isDestroyed()) return;
             event.sender.send("chat-session-id", sid);
           },
         },

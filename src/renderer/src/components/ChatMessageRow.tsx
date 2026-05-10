@@ -1,12 +1,12 @@
 import React, { useState, memo } from "react";
 import icon from "../assets/icon.png";
 import SmartMessageRenderer from "./SmartMessageRenderer";
-import { 
-  Activity, 
-  CheckCircle, 
-  Sparkles, 
-  ChevronRight, 
-  ChevronDown 
+import {
+  Activity,
+  CheckCircle,
+  Sparkles,
+  ChevronRight,
+  ChevronDown
 } from "lucide-react";
 import { useI18n } from "./useI18n";
 
@@ -94,9 +94,9 @@ const ChatMessageRow = memo(function ChatMessageRow({
             </span>
           </div>
           <div className="text-[11px] text-muted-foreground mb-3 font-medium opacity-70">
-             Analyzing data payload for patterns and insights...
+            Analyzing data payload for patterns and insights...
           </div>
-          <div 
+          <div
             className="cursor-pointer flex items-center gap-1 text-[11px] font-bold text-dash-accent select-none hover:opacity-80 transition-opacity"
             onClick={() => setIsCollapsed(!isCollapsed)}
           >
@@ -105,7 +105,7 @@ const ChatMessageRow = memo(function ChatMessageRow({
           </div>
           {!isCollapsed && summaryJson && (
             <pre className="mt-3 p-2.5 bg-black/30 rounded-xl overflow-x-auto text-[10px] text-muted-foreground border border-white/5 whitespace-pre-wrap font-mono leading-relaxed">
-{summaryJson}
+              {summaryJson}
             </pre>
           )}
         </div>
@@ -145,12 +145,23 @@ const ChatMessageRow = memo(function ChatMessageRow({
         )}
 
         {(msg.content.trim() !== "" || isAgentSummarizationResponse) && (
-          <div 
+          <div
             className={`chat-bubble chat-bubble-${msg.role} ${isVisual ? "chat-bubble-visual" : ""}`}
             style={isAgentSummarizationResponse ? { width: "100%", backgroundColor: "transparent", background: "transparent", border: "none", padding: 0, boxShadow: "none" } : undefined}
           >
             {msg.role === "agent" ? (
-              <SmartMessageRenderer>{msg.content}</SmartMessageRenderer>
+              isLoading && isLast && (msg.content.trim().startsWith("{") || msg.content.includes("\"visual\"")) ? (
+                <div className="flex items-center gap-2.5 py-2 px-1 text-dash-accent/60">
+                  <div className="flex gap-1">
+                    <span className="w-1.5 h-1.5 rounded-full bg-current animate-bounce [animation-delay:-0.3s]"></span>
+                    <span className="w-1.5 h-1.5 rounded-full bg-current animate-bounce [animation-delay:-0.15s]"></span>
+                    <span className="w-1.5 h-1.5 rounded-full bg-current animate-bounce"></span>
+                  </div>
+                  <span className="text-[10px] font-black uppercase tracking-[0.2em] animate-pulse">Typing...</span>
+                </div>
+              ) : (
+                <SmartMessageRenderer>{msg.content}</SmartMessageRenderer>
+              )
             ) : (
               msg.content
             )}

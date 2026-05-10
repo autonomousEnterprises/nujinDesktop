@@ -1,14 +1,14 @@
 import React from "react";
-import { 
-  Activity, 
-  CheckCircle, 
-  AlertTriangle, 
-  AlertCircle, 
-  Info, 
-  Zap, 
-  ArrowRight, 
-  TrendingUp, 
-  TrendingDown, 
+import {
+  Activity,
+  CheckCircle,
+  AlertTriangle,
+  AlertCircle,
+  Info,
+  Zap,
+  ArrowRight,
+  TrendingUp,
+  TrendingDown,
   Minus,
   MessageSquare,
   Search,
@@ -21,7 +21,8 @@ import {
   Globe,
   Layout,
   Terminal,
-  Play
+  Play,
+  Sparkles
 } from "lucide-react";
 import AgentMarkdown from "./AgentMarkdown";
 
@@ -110,7 +111,7 @@ const VisualResponse: React.FC<{ data: VisualData }> = ({ data }) => {
               <div className="flex-1 h-[1px] bg-white/[0.03]"></div>
             </div>
           )}
-          
+
           {block.type === "text" && block.content && (
             <div className="px-1 text-[14px] text-foreground/90 leading-relaxed font-medium">
               <AgentMarkdown>{block.content}</AgentMarkdown>
@@ -124,11 +125,10 @@ const VisualResponse: React.FC<{ data: VisualData }> = ({ data }) => {
                   <div className="flex items-center justify-between mb-4">
                     <span className="text-[10px] font-black uppercase tracking-[0.2em] text-muted-foreground/40">{item.label}</span>
                     {item.trend && (
-                      <span className={`text-[10px] font-black px-2 py-0.5 rounded-lg flex items-center gap-1 ${
-                        item.trend === "up" ? "text-emerald-500 bg-emerald-500/10" : 
-                        item.trend === "down" ? "text-rose-500 bg-rose-500/10" : 
-                        "text-slate-500 bg-slate-500/10"
-                      }`}>
+                      <span className={`text-[10px] font-black px-2 py-0.5 rounded-lg flex items-center gap-1 ${item.trend === "up" ? "text-emerald-500 bg-emerald-500/10" :
+                        item.trend === "down" ? "text-rose-500 bg-rose-500/10" :
+                          "text-slate-500 bg-slate-500/10"
+                        }`}>
                         {item.trend === "up" ? <TrendingUp size={10} strokeWidth={3} /> : item.trend === "down" ? <TrendingDown size={10} strokeWidth={3} /> : <Minus size={10} strokeWidth={3} />}
                         {item.trend_value || ""}
                       </span>
@@ -177,11 +177,10 @@ const VisualResponse: React.FC<{ data: VisualData }> = ({ data }) => {
             <div className="relative pl-3 space-y-5 before:absolute before:left-[17px] before:top-2 before:bottom-2 before:w-[1.5px] before:bg-white/5">
               {block.items.map((step, i) => (
                 <div key={i} className="relative flex items-start gap-5 group/step">
-                  <div className={`mt-1.5 shrink-0 w-3.5 h-3.5 rounded-full border-[3px] z-10 transition-all duration-300 ${
-                    step.status === "completed" ? "bg-emerald-500 border-emerald-500/20" : 
-                    step.status === "current" ? "bg-dash-accent border-dash-accent/20 scale-125 shadow-[0_0_10px_rgba(96,165,250,0.3)]" : 
-                    "bg-white/5 border-white/10"
-                  }`}>
+                  <div className={`mt-1.5 shrink-0 w-3.5 h-3.5 rounded-full border-[3px] z-10 transition-all duration-300 ${step.status === "completed" ? "bg-emerald-500 border-emerald-500/20" :
+                    step.status === "current" ? "bg-dash-accent border-dash-accent/20 scale-125 shadow-[0_0_10px_rgba(96,165,250,0.3)]" :
+                      "bg-white/5 border-white/10"
+                    }`}>
                   </div>
                   <div className="flex-1 min-w-0 pt-0.5">
                     <div className={`text-sm font-black mb-1 tracking-tight ${step.status === "current" ? "text-dash-accent" : "text-foreground"}`}>
@@ -225,15 +224,15 @@ const VisualResponse: React.FC<{ data: VisualData }> = ({ data }) => {
 
           {block.type === "status" && block.content && (
             <div className={`p-4 rounded-2xl border flex gap-4 items-center transition-all hover:border-white/20 ${STATUS_COLORS[block.status as keyof typeof STATUS_COLORS || "info"]}`}>
-               <Info size={18} className="shrink-0 opacity-80" strokeWidth={2.5} />
-               <div className="text-sm font-bold flex-1 break-words tracking-tight">{block.content}</div>
+              <Info size={18} className="shrink-0 opacity-80" strokeWidth={2.5} />
+              <div className="text-sm font-bold flex-1 break-words tracking-tight">{block.content}</div>
             </div>
           )}
 
           {block.type === "code" && block.content && (
-             <div className="mt-2 rounded-2xl overflow-hidden border border-white/5">
-               <AgentMarkdown>{`\`\`\`${block.language || "code"}\n${block.content}\n\`\`\``}</AgentMarkdown>
-             </div>
+            <div className="mt-2 rounded-2xl overflow-hidden border border-white/5">
+              <AgentMarkdown>{`\`\`\`${block.language || "code"}\n${block.content}\n\`\`\``}</AgentMarkdown>
+            </div>
           )}
         </div>
       ))}
@@ -261,25 +260,31 @@ const VisualResponse: React.FC<{ data: VisualData }> = ({ data }) => {
 
       {/* Actions Section */}
       {data.actions && data.actions.length > 0 && (
-        <div className="flex flex-wrap gap-2 mt-1">
-          {data.actions.map((action, i) => (
-            <button
-              key={i}
-              className={`px-5 py-2.5 rounded-xl text-xs font-black tracking-tight transition-all flex items-center gap-2.5 active:scale-[0.96] ${
-                action.primary 
-                ? "bg-dash-accent text-white hover:bg-dash-accent/90 shadow-sm" 
-                : "bg-white/5 text-foreground hover:bg-white/10 border border-white/5 hover:border-white/10"
-              }`}
-              onClick={() => {
-                if (action.command) {
-                   (window as any).hermesAPI?.sendMessage(action.command);
-                }
-              }}
-            >
-              <Play size={12} className={action.primary ? "fill-white" : ""} strokeWidth={3} />
-              {action.label.toUpperCase()}
-            </button>
-          ))}
+        <div className="flex flex-col gap-3 mt-4 pt-4 border-t border-white/5">
+          <div className="flex flex-wrap gap-2">
+            {data.actions.map((action, i) => (
+              <button
+                key={i}
+                className={`px-5 py-3 rounded-2xl text-[11px] font-black tracking-tight transition-all flex items-center gap-2.5 active:scale-[0.96] border shadow-sm cursor-pointer ${action.primary
+                  ? "bg-dash-accent text-white border-dash-accent/20 hover:bg-dash-accent/90"
+                  : "bg-white/[0.03] text-foreground/80 hover:bg-white/[0.06] border-white/5 hover:border-white/10"
+                  }`}
+                onClick={() => {
+                  if (action.command) {
+                    window.dispatchEvent(new CustomEvent("hermes:send-message", { 
+                      detail: { 
+                        message: action.command,
+                        displayText: action.label 
+                      } 
+                    }));
+                  }
+                }}
+              >
+                <Sparkles size={14} className={action.primary ? "text-white" : "text-dash-accent"} strokeWidth={2.5} />
+                {action.label}
+              </button>
+            ))}
+          </div>
         </div>
       )}
     </div>

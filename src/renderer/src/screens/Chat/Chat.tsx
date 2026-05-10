@@ -471,8 +471,7 @@ function Chat({
     return () => window.removeEventListener("keydown", handleKeyDown);
   }, [onNewChat]);
 
-  async function handleSend(): Promise<void> {
-    const text = input.trim();
+  const handleSendInternal = useCallback(async (text: string, displayText?: string) => {
     if (!text || isLoading) return;
 
     setSlashMenuOpen(false);
@@ -492,7 +491,7 @@ function Chat({
         if (cmd !== "/new" && cmd !== "/clear") {
           setMessages((prev) => [
             ...prev,
-            { id: `user-${Date.now()}`, role: "user", content: text },
+            { id: `user-${Date.now()}`, role: "user", content: displayText || text },
           ]);
         }
         await executeLocalCommand(text);
@@ -503,7 +502,7 @@ function Chat({
     setIsLoading(true);
     setMessages((prev) => [
       ...prev,
-      { id: `user-${Date.now()}`, role: "user", content: text },
+      { id: `user-${Date.now()}`, role: "user", content: displayText || text },
     ]);
     onSessionStarted?.();
 
@@ -520,6 +519,20 @@ function Chat({
     } catch {
       // Error already handled by onChatError IPC listener — avoid duplicate
     }
+  }, [isLoading, messages, profile, hermesSessionId, onSessionStarted, executeLocalCommand]);
+
+  useEffect(() => {
+    const handleGlobalSend = (e: any) => {
+      if (e.detail?.message) {
+        handleSendInternal(e.detail.message, e.detail.displayText);
+      }
+    };
+    window.addEventListener("hermes:send-message", handleGlobalSend);
+    return () => window.removeEventListener("hermes:send-message", handleGlobalSend);
+  }, [handleSendInternal]);
+
+  async function handleSend(): Promise<void> {
+    await handleSendInternal(input.trim());
   }
 
   async function handleQuickAsk(): Promise<void> {

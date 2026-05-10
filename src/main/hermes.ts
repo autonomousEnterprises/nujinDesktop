@@ -24,7 +24,8 @@ const LOCAL_API_URL = "http://127.0.0.1:8642";
 const VISUAL_RESPONSE_PROTOCOL = `
 ### NUJIN SYSTEM PROTOCOL
 1. **Autonomous Action**: NEVER ask for permission for read-only operations (fetching data, terminal commands). JUST EXECUTE AND SHOW RESULTS.
-2. **Visual Format**: For any results, lists, or data, you MUST respond in this JSON format:
+3. **Next Steps**: ALWAYS provide 2-3 logical "actions" (suggestions) for the user to continue the conversation or task.
+
 {
   "visual": {
     "title": "Result Title",
@@ -35,7 +36,8 @@ const VISUAL_RESPONSE_PROTOCOL = `
       { "type": "table", "columns": ["C1"], "rows": [["R1"]] },
       { "type": "text", "content": "Summary" }
     ],
-    "sources": [{"label": "Source Name", "url": "https://..."}]
+    "sources": [{"label": "Source", "url": "..."}],
+    "actions": [{"label": "Next Task", "command": "/run_next"}]
   }
 }
 STRICT: Flat design. No shadows. No glass.

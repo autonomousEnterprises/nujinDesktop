@@ -509,7 +509,7 @@ const DashboardChat = memo(forwardRef<DashboardChatHandle, DashboardChatProps>(f
     return () => window.removeEventListener("keydown", handleKeyDown);
   }, [onNewChat]);
 
-  const handleSendInternal = async (text: string) => {
+  const handleSendInternal = useCallback(async (text: string, displayText?: string) => {
     if (!text || isLoading) return;
 
     setSlashMenuOpen(false);
@@ -529,7 +529,7 @@ const DashboardChat = memo(forwardRef<DashboardChatHandle, DashboardChatProps>(f
         if (cmd !== "/new" && cmd !== "/clear") {
           setMessages((prev) => [
             ...prev,
-            { id: `user-${Date.now()}`, role: "user", content: text },
+            { id: `user-${Date.now()}`, role: "user", content: displayText || text },
           ]);
         }
         await executeLocalCommand(text);
@@ -540,7 +540,7 @@ const DashboardChat = memo(forwardRef<DashboardChatHandle, DashboardChatProps>(f
     setIsLoading(true);
     setMessages((prev) => [
       ...prev,
-      { id: `user-${Date.now()}`, role: "user", content: text },
+      { id: `user-${Date.now()}`, role: "user", content: displayText || text },
     ]);
     onSessionStarted?.(hermesSessionId || "");
 
@@ -562,7 +562,17 @@ const DashboardChat = memo(forwardRef<DashboardChatHandle, DashboardChatProps>(f
     } catch {
       // Error already handled by onChatError IPC listener — avoid duplicate
     }
-  };
+  }, [isLoading, messages, profile, hermesSessionId, onSessionStarted, dashboardContext, executeLocalCommand]);
+
+  useEffect(() => {
+    const handleGlobalSend = (e: any) => {
+      if (e.detail?.message) {
+        handleSendInternal(e.detail.message, e.detail.displayText);
+      }
+    };
+    window.addEventListener("hermes:send-message", handleGlobalSend);
+    return () => window.removeEventListener("hermes:send-message", handleGlobalSend);
+  }, [handleSendInternal]);
 
   async function handleSend(): Promise<void> {
     await handleSendInternal(input);
@@ -1184,9 +1194,14 @@ const DashboardChat = memo(forwardRef<DashboardChatHandle, DashboardChatProps>(f
                     <button
                       key={`${m.provider}:${m.model}`}
                       className={`chat-model-option ${currentModel === m.model && currentProvider === m.provider ? "active" : ""}`}
-                      onClick={() =>
-                        selectModel(m.provider, m.model, m.baseUrl)
-                      }
+                      onClick={() => {
+                        selectModel(m.provider, m.model, m.baseUrl);
+                        if (action.command) {
+                          window.dispatchEvent(new CustomEvent("hermes:send-message", { 
+                            detail: { message: action.command } 
+                          }));
+                        }
+                      }}
                     >
                       <span className="chat-model-option-label">{m.label}</span>
                       <span className="chat-model-option-id">{m.model}</span>
