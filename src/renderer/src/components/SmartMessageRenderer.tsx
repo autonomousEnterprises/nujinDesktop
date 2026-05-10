@@ -9,33 +9,31 @@ interface SmartMessageRendererProps {
 const SmartMessageRenderer = memo(function SmartMessageRenderer({ children }: SmartMessageRendererProps) {
   const content = children.trim();
   
-  // Try to find a JSON block in the content
-  // We look for either a direct JSON string or a JSON block inside markdown
-  const jsonMatch = content.match(/(\{[\s\S]*"visual"[\s\S]*\}|\{[\s\S]*"actions"[\s\S]*\})/);
+  // Find the JSON block. We look for the FIRST { and the LAST } that contains "visual" or "actions"
+  const startIdx = content.indexOf('{');
+  const lastIdx = content.lastIndexOf('}');
   
-  if (jsonMatch) {
-    const jsonStr = jsonMatch[0];
-    const textBefore = content.split(jsonStr)[0].trim();
+  if (startIdx !== -1 && lastIdx !== -1 && lastIdx > startIdx) {
+    const potentialJson = content.substring(startIdx, lastIdx + 1);
     
-    try {
-      const data = JSON.parse(jsonStr);
-      const visualData = data.visual || data;
+    // Quick check if it's likely our protocol
+    if (potentialJson.includes('"visual"') || potentialJson.includes('"actions"')) {
+      try {
+        const data = JSON.parse(potentialJson);
+        const visualData = data.visual || data;
+        const textBefore = content.substring(0, startIdx).trim();
+        const textAfter = content.substring(lastIdx + 1).trim();
 
-      // If we have text before the JSON, we render the text normally 
-      // and then the visual components (likely just actions/metrics)
-      if (textBefore) {
         return (
           <div className="flex flex-col gap-4">
-            <AgentMarkdown>{textBefore}</AgentMarkdown>
-            <VisualResponse data={visualData} hideHeader={true} />
+            {textBefore && <AgentMarkdown>{textBefore}</AgentMarkdown>}
+            <VisualResponse data={visualData} hideHeader={!!textBefore} />
+            {textAfter && <AgentMarkdown>{textAfter}</AgentMarkdown>}
           </div>
         );
+      } catch (e) {
+        // Partial JSON or invalid - fall back to markdown
       }
-
-      // If no text before, just render the full visual response
-      return <VisualResponse data={visualData} />;
-    } catch (e) {
-      // JSON parse failed, fall back
     }
   }
 

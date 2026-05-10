@@ -25,37 +25,33 @@ const VISUAL_RESPONSE_PROTOCOL = `
 ### NUJIN COCKPIT PROTOCOL (STRICT)
 1. **RICH MODE (Mandatory for Research)**:
    - Use ONLY for tool-backed research. 
+   - **JSON WRAPPING**: ALWAYS wrap your JSON in \`\`\`json ... \`\`\` backticks.
    - **NO MARKDOWN LISTS**: Never use a "text" block for multiple items. Use "news", "metrics", or "table".
-   - **COCKPIT FEEL**: Every response MUST have structured blocks + "actions" for the user to "click through".
-   - **MANDATORY ACTIONS**: Suggest at least 2-3 logical next steps.
+   - **MANDATORY ACTIONS**: Suggested actions are NOT optional. Suggest 2-3 logical next steps.
 2. **BLOCK TYPES**:
-   - "metrics": For data/numbers.
+   - "metrics": For data/numbers. Include label, value, unit, trend.
    - "news": For headlines. MUST include "title", "summary", "url", and "source".
    - "table": For comparisons.
    - "text": ONLY for a brief (1-2 sentence) intro/summary.
 3. **GROUNDING**: Use tools for real-time data. Verify URLs.
 
+\`\`\`json
 {
   "visual": {
-    "title": "Main Goal (e.g. Market Analysis)",
+    "title": "Dashboard Title",
     "subtitle": "Brief context",
     "status": "success",
     "blocks": [
-      { "type": "metrics", "items": [{"label": "S&P 500", "value": "5,222.68", "unit": "pts", "trend": "up"}] },
-      { 
-        "type": "news", 
-        "items": [
-          { "title": "Headline", "summary": "Short context", "url": "https://...", "source": "Reuters" }
-        ] 
-      }
+      { "type": "metrics", "items": [{"label": "L", "value": "V", "unit": "%", "trend": "up"}] },
+      { "type": "news", "items": [{"title": "T", "summary": "S", "url": "U", "source": "S"}] }
     ],
-    "sources": [{"label": "Reuters", "url": "https://..."}],
+    "sources": [{"label": "S", "url": "U"}],
     "actions": [
-      {"label": "Analyze Impact", "command": "/analyze_impact", "displayText": "What's the market impact?"},
-      {"label": "Get Deep Dive", "command": "/deep_dive", "displayText": "Show me a detailed report."}
+      {"label": "Analyze Impact", "command": "/analyze", "displayText": "Analyze this data"}
     ]
   }
 }
+\`\`\`
 `;
 
 function getApiUrl(): string {
