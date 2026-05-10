@@ -146,27 +146,40 @@ const VisualResponse: React.FC<{ data: VisualData; hideHeader?: boolean }> = ({ 
             </div>
           )}
 
-          {block.type === "list" && block.items && (
-            <div className={`grid gap-4 ${block.items.length > 3 ? "sm:grid-cols-2" : "grid-cols-1"}`}>
+          {(block.type === "list" || block.type === "news") && block.items && (
+            <div className={`grid gap-4 ${block.items.length > 2 ? "sm:grid-cols-2" : "grid-cols-1"}`}>
               {block.items.map((item, i) => (
-                <div key={i} className="flex flex-col gap-3 p-5 rounded-[2rem] border border-white/5 bg-white/[0.015] hover:bg-white/[0.035] hover:border-white/10 transition-all duration-400 group/item">
+                <div key={i} className="flex flex-col gap-3 p-5 rounded-[2rem] border border-white/5 bg-white/[0.015] hover:bg-white/[0.035] hover:border-white/10 transition-all duration-400 group/item relative overflow-hidden">
                   <div className="flex items-start justify-between gap-3">
                     <div className="shrink-0 p-2.5 rounded-2xl bg-dash-accent/10 border border-dash-accent/5 group-hover/item:scale-110 transition-transform">
-                      <Zap size={16} className="text-dash-accent opacity-80" strokeWidth={2.5} />
+                      {block.type === "news" ? <Globe size={16} className="text-dash-accent opacity-80" strokeWidth={2.5} /> : <Zap size={16} className="text-dash-accent opacity-80" strokeWidth={2.5} />}
                     </div>
                     {typeof item !== "string" && item.title && (
-                      <div className="flex-1 text-[15px] font-black leading-tight text-foreground/90 tracking-tight">
+                      <div className="flex-1 text-[14px] font-black leading-tight text-foreground/90 tracking-tight">
                         {item.title}
                       </div>
                     )}
                   </div>
-                  <div className="text-[13px] text-muted-foreground leading-relaxed font-medium">
-                    {typeof item === "string" ? <AgentMarkdown>{item}</AgentMarkdown> : <AgentMarkdown>{item.content || item.description || ""}</AgentMarkdown>}
+                  <div className="text-[12px] text-muted-foreground/80 leading-relaxed font-medium">
+                    {/* Handle both string items and object items with content/description */}
+                    {typeof item === "string" ? 
+                      <AgentMarkdown>{item}</AgentMarkdown> : 
+                      <AgentMarkdown>{item.content || item.description || item.summary || ""}</AgentMarkdown>
+                    }
                   </div>
-                  {typeof item !== "string" && item.url && (
-                    <a href={item.url} target="_blank" rel="noopener noreferrer" className="mt-auto pt-2 text-[10px] font-black text-sky-400/70 hover:text-sky-400 flex items-center gap-1.5 transition-colors">
-                      <Globe size={10} /> READ FULL SOURCE
-                    </a>
+                  {typeof item !== "string" && (item.url || item.source) && (
+                    <div className="mt-auto pt-2 flex items-center justify-between gap-2">
+                      {item.url ? (
+                        <a href={item.url} target="_blank" rel="noopener noreferrer" className="text-[10px] font-black text-dash-accent/70 hover:text-dash-accent flex items-center gap-1.5 transition-colors uppercase tracking-wider">
+                          <Globe size={10} /> View Source
+                        </a>
+                      ) : <div />}
+                      {item.source && (
+                        <span className="px-2 py-0.5 rounded-full bg-white/5 text-[9px] font-bold text-muted-foreground/60 border border-white/5">
+                          {item.source}
+                        </span>
+                      )}
+                    </div>
                   )}
                 </div>
               ))}

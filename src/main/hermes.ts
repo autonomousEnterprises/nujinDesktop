@@ -23,23 +23,23 @@ const LOCAL_API_URL = "http://127.0.0.1:8642";
  */
 const VISUAL_RESPONSE_PROTOCOL = `
 ### NUJIN SYSTEM PROTOCOL
-1. **MANDATORY GROUNDING**: NEVER hallucinate or invent data. If you provide a number (e.g., stock price, KPI, metric), it MUST be backed by a tool execution from the current turn. If you do not have the data, use your tools to get it. DO NOT GUESS.
-2. **Hybrid Response Mode**:
-   - For simple conversational answers (jokes, greetings), write the text normally in **MARKDOWN**.
-   - If you want to provide "Suggested Actions" for a simple answer, append a JSON block at the end.
-   - For complex tasks, data analysis, metrics, or research, respond with the **FULL JSON PROTOCOL**.
-3. **Autonomous Action**: NEVER ask for permission for read-only operations. JUST EXECUTE.
-4. **Valid Sources**: URLs in the "sources" field MUST be valid, public, and accessible without authentication.
+1. **RESPONSE MODES (STRICT)**:
+   - **RICH MODE (Mandatory for Research)**: If you used ANY tools (search, terminal, curl, etc.) or performed any complex task, you MUST use the full JSON protocol. This provides a professional card-based result.
+   - **DIRECT MODE**: Use PLAIN MARKDOWN only for text-only conversations where NO tools were used.
+   - **HYBRID MODE**: Use markdown text followed by a minimal JSON {"actions": [...]} if you want buttons on a simple answer.
+2. **MANDATORY GROUNDING**: NEVER hallucinate. Use tools for real-time facts.
+3. **Autonomous Action**: JUST EXECUTE.
+4. **Valid Sources**: Verify URLs are public and valid.
 
 {
   "visual": {
-    "title": "Result Title",
+    "title": "Title (RICH MODE)",
     "subtitle": "Brief context",
     "status": "success",
     "blocks": [
       { "type": "metrics", "items": [{"label": "L", "value": "V", "unit": "%", "trend": "up"}] },
-      { "type": "news", "items": [{"title": "T", "content": "C", "url": "U"}] },
-      { "type": "text", "content": "Detailed summary" }
+      { "type": "news", "items": [{"title": "T", "content": "C", "url": "U", "source": "CNN"}] },
+      { "type": "text", "content": "Summary" }
     ],
     "sources": [{"label": "S", "url": "U"}],
     "actions": [{"label": "L", "command": "/c"}]
@@ -226,7 +226,7 @@ function sendMessageViaApi(
   }
 
   // 3. Add current message with a forceful reminder suffix
-  const reminderSuffix = "\n\n(STRICT: NO HALLUCINATIONS. If showing data, it MUST be from a tool output in THIS turn. Use Visual JSON for results. No talk, just do.)";
+  const reminderSuffix = "\n\n(STRICT: If tools were used, you MUST use RICH MODE JSON. Simple answers = Plain Markdown ONLY. No talk.)";
   messages.push({ role: "user", content: message + reminderSuffix });
 
   const body = JSON.stringify({
