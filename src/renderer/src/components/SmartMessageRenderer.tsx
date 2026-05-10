@@ -9,44 +9,42 @@ interface SmartMessageRendererProps {
 const SmartMessageRenderer = memo(function SmartMessageRenderer({ children }: SmartMessageRendererProps) {
   const content = children.trim();
   
-  // 1. Try to find the JSON block that contains "visual" or "actions"
-  // We use a more robust extraction that handles multiple blocks or surrounding text.
   let jsonToParse = "";
   let startIdx = -1;
   let lastIdx = -1;
 
-  // Find all possible JSON-like blocks and try to parse the one that looks like our protocol
-  const protocolMatches = [...content.matchAll(/\{[\s\S]*?"visual"[\s\S]*?\}/g)];
-  
-  if (protocolMatches.length > 0) {
-    // Take the LAST one (most likely the final response)
-    const match = protocolMatches[protocolMatches.length - 1];
-    jsonToParse = match[0];
-    startIdx = match.index!;
-    lastIdx = startIdx + jsonToParse.length;
+  // 1. Try to find JSON inside markdown code blocks first (highest fidelity)
+  const codeBlockMatch = content.match(/```json\s*([\s\S]*?)```/);
+  if (codeBlockMatch) {
+    jsonToParse = codeBlockMatch[1].trim();
+    startIdx = content.indexOf("```json");
+    lastIdx = startIdx + codeBlockMatch[0].length;
   } else {
-    // Fallback to the old method if the regex fails for some reason
-    const s = content.indexOf('{');
-    const e = content.lastIndexOf('}');
-    if (s !== -1 && e !== -1 && e > s) {
-      const potential = content.substring(s, e + 1);
+    // 2. Fallback: Find the FIRST { and the LAST } that encompasses "visual" or "actions"
+    const firstBrace = content.indexOf('{');
+    const lastBrace = content.lastIndexOf('}');
+    
+    if (firstBrace !== -1 && lastBrace !== -1 && lastBrace > firstBrace) {
+      const potential = content.substring(firstBrace, lastBrace + 1);
       if (potential.includes('"visual"') || potential.includes('"actions"')) {
         jsonToParse = potential;
-        startIdx = s;
-        lastIdx = e + 1;
+        startIdx = firstBrace;
+        lastIdx = lastBrace + 1;
       }
     }
   }
 
   if (jsonToParse) {
     try {
-      // 1. Try to parse as-is
       let data;
       try {
         data = JSON.parse(jsonToParse);
       } catch (e) {
-        // 2. If parsing fails, try to repair truncated JSON
+        // Try simple repair for truncation
         let repaired = jsonToParse.trim();
+        // Close strings if needed
+        if ((repaired.match(/"/g) || []).length % 2 !== 0) repaired += '"';
+        
         const openBraces = (repaired.match(/\{/g) || []).length;
         const closeBraces = (repaired.match(/\}/g) || []).length;
         const openBrackets = (repaired.match(/\[/g) || []).length;
@@ -59,21 +57,42 @@ const SmartMessageRenderer = memo(function SmartMessageRenderer({ children }: Sm
       }
 
       const visualData = data.visual || data;
-      const textBefore = content.substring(0, startIdx).trim();
-      const textAfter = content.substring(lastIdx).trim();
+      let textBefore = content.substring(0, startIdx).trim();
+      let textAfter = content.substring(lastIdx).trim();
 
+      // Clean up common artifacts
+      if (textBefore.endsWith("```json")) textBefore = textBefore.slice(0, -7).trim();
+      if (textBefore.endsWith("```")) textBefore = textBefore.slice(0, -3).trim();
+      if (textAfter.startsWith("```")) textAfter = textAfter.slice(3).trim();
+
+      return (
+        <div className="flex flex-col gap-4">
+          {textBefore && <AgentMarkdown>{textBefore}</AgentMarkdown>}
+          <VisualResponse data={visualData} hideHeader={!!textBefore} />
+          {textAfter && <AgentMarkdown>{textAfter}</AgentMarkdown>}
+        </div>
+      );
+    } catch (e) {
+      // Partial JSON or invalid - show a rescue card if we were expecting visual data
+      if (jsonToParse.includes('"visual"') || content.includes('```json')) {
         return (
           <div className="flex flex-col gap-4">
-            {textBefore && <AgentMarkdown>{textBefore}</AgentMarkdown>}
-            <VisualResponse data={visualData} hideHeader={!!textBefore} />
-            {textAfter && <AgentMarkdown>{textAfter}</AgentMarkdown>}
+            <VisualResponse 
+              data={{ 
+                title: "Incomplete Response", 
+                subtitle: "The AI response was truncated or contains invalid JSON. Please try asking for a more concise summary.",
+                status: "warning",
+                actions: [{ label: "Retry Concise", command: "Give me a very short summary of the above results." }]
+              }} 
+            />
+            <div className="opacity-40 grayscale scale-[0.98] origin-top">
+              <AgentMarkdown>{children}</AgentMarkdown>
+            </div>
           </div>
         );
-      } catch (e) {
-        // Partial JSON or invalid - fall back to markdown
       }
     }
-
+  }
 
 
   // Fallback to normal markdown

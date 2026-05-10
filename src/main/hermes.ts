@@ -26,12 +26,10 @@ const VISUAL_RESPONSE_PROTOCOL = `
 1. **RESEARCH-ONLY**: Use JSON ONLY for Research/Data. Simple talk = Plain Text.
 2. **RESPONSE START**: Start IMMEDIATELY with \`\`\`json. NO INTRO.
 3. **PREVENT TRUNCATION (CRITICAL)**: 
-   - **LIMIT NEWS**: Max 3 news items. 
-   - **SHORT SUMMARIES**: Max 1 concise sentence per news item.
-   - **NO BLOAT**: Do not repeat massive tool outputs. Summarize ONLY.
+   - **NO BLOAT**: Summarize tool outputs only.
 4. **FIDELITY**: COPY-PASTE data and URLs from tool outputs. Zero Hallucinations.
 5. **STRUCTURE**: Use "metrics", "news", and "actions".
-6. **ACTIONS**: MANDATORY. Suggest 2 steps.
+6. **ACTIONS**: MANDATORY. Suggest next steps.
 
 \`\`\`json
 {
