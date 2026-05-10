@@ -1329,6 +1329,19 @@ body {
   align-self: flex-start;
 }
 
+.chat-message-visual {
+  max-width: 100%;
+  width: 100%;
+}
+
+.chat-bubble-visual {
+  background: transparent !important;
+  border: none !important;
+  padding: 0 !important;
+  box-shadow: none !important;
+  width: 100%;
+}
+
 .chat-avatar {
   width: 28px;
   height: 28px;

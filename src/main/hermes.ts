@@ -16,6 +16,31 @@ import { stripAnsi } from "./utils";
 
 const LOCAL_API_URL = "http://127.0.0.1:8642";
 
+/**
+ * VISUAL_RESPONSE_PROTOCOL
+ * This protocol instructs the AI on how to use the dynamic JSON rendering system
+ * for rich, visually appealing responses in Nujin Desktop.
+ */
+const VISUAL_RESPONSE_PROTOCOL = `
+### NUJIN SYSTEM PROTOCOL
+1. **Autonomous Action**: NEVER ask for permission for read-only operations (fetching data, terminal commands). JUST EXECUTE AND SHOW RESULTS.
+2. **Visual Format**: For any results, lists, or data, you MUST respond in this JSON format:
+{
+  "visual": {
+    "title": "Result Title",
+    "status": "success",
+    "blocks": [
+      { "type": "metrics", "items": [{"label": "L", "value": "V", "unit": "%", "trend": "up", "trend_value": "5%"}] },
+      { "type": "list", "items": [{"title": "Item Title", "content": "Details"}] },
+      { "type": "table", "columns": ["C1"], "rows": [["R1"]] },
+      { "type": "text", "content": "Summary" }
+    ],
+    "sources": [{"label": "Source Name", "url": "https://..."}]
+  }
+}
+STRICT: Flat design. No shadows. No glass.
+`;
+
 function getApiUrl(): string {
   const conn = getConnectionConfig();
   if (conn.mode === "remote" && conn.remoteUrl) {
@@ -33,7 +58,7 @@ function getRemoteAuthHeader(): Record<string, string> {
   if (conn.mode === "remote" && conn.apiKey) {
     return { Authorization: `Bearer ${conn.apiKey}` };
   }
-  
+
   // Local mode: check for API_SERVER_KEY to support session continuation
   if (conn.mode === "local") {
     const env = readEnv();
@@ -179,6 +204,11 @@ function sendMessageViaApi(
 
   // Build full conversation from history + current message (standard OpenAI format)
   const messages: Array<{ role: string; content: string }> = [];
+
+  // 1. Initial System Message with full protocol
+  messages.push({ role: "system", content: VISUAL_RESPONSE_PROTOCOL });
+
+  // 2. Add history
   if (history && history.length > 0) {
     for (const msg of history) {
       messages.push({
@@ -187,7 +217,10 @@ function sendMessageViaApi(
       });
     }
   }
-  messages.push({ role: "user", content: message });
+
+  // 3. Add current message with a forceful reminder suffix
+  const reminderSuffix = "\n\n(Execute now. Use Visual JSON for results. No talk, just do.)";
+  messages.push({ role: "user", content: message + reminderSuffix });
 
   const body = JSON.stringify({
     model: mc.model || "hermes-agent",
@@ -249,11 +282,15 @@ function sendMessageViaApi(
             const parsed = JSON.parse(raw);
             const content = parsed.choices?.[0]?.message?.content || "";
             const errMsg = parsed.error?.message || "";
-            finish(
-              content ||
+            if (content) {
+              cb.onChunk(content);
+              finish();
+            } else {
+              finish(
                 errMsg ||
                 "No response received from the model. Check your model configuration and API key.",
-            );
+              );
+            }
           } catch {
             finish(
               "No response received from the model. Check your model configuration and API key.",
@@ -686,7 +723,10 @@ export async function sendMessage(
   }
 
   // Fallback to CLI
-  return sendMessageViaCli(finalMessage, cb, profile, resumeSessionId);
+  // Prepend the visual protocol for CLI since it doesn't support system messages as easily
+  const reminderSuffix = "\n\n(Execute now. Use Visual JSON for results. No talk, just do.)";
+  const cliMessage = `${VISUAL_RESPONSE_PROTOCOL}\n\nUSER MESSAGE: ${finalMessage}${reminderSuffix}`;
+  return sendMessageViaCli(cliMessage, cb, profile, resumeSessionId);
 }
 
 // Lazy init — called on first sendMessage or gateway start

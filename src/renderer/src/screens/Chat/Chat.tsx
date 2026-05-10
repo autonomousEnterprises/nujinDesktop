@@ -137,80 +137,7 @@ export { AgentMarkdown };
 const APPROVAL_RE =
   /⚠️.*dangerous|requires? (your )?approval|\/approve.*\/deny|do you want (me )?to (proceed|continue|run|execute)/i;
 
-interface MessageRowProps {
-  msg: ChatMessage;
-  isLast: boolean;
-  isLoading: boolean;
-  onApprove: () => void;
-  onDeny: () => void;
-}
-
-const MessageRow = memo(function MessageRow({
-  msg,
-  isLast,
-  isLoading,
-  onApprove,
-  onDeny,
-}: MessageRowProps): React.JSX.Element {
-  const { t } = useI18n();
-  return (
-    <div className={`chat-message chat-message-${msg.role}`}>
-      {msg.role === "user" ? (
-        <div className="chat-avatar chat-avatar-user">U</div>
-      ) : (
-        <HermesAvatar />
-      )}
-      <div className="flex flex-col gap-2 w-full min-w-0">
-        {msg.toolSteps && msg.toolSteps.length > 0 && (
-          <div className="flex flex-col gap-1.5 mb-1 pl-3 border-l-2 border-slate-200 dark:border-slate-800 ml-1">
-            {msg.toolSteps.map((step, i) => {
-              const isLastStep = i === msg.toolSteps!.length - 1;
-              const isActive = isLastStep && isLoading && isLast;
-              return (
-                <div key={i} className={`flex items-start gap-2.5 text-[13px] transition-opacity duration-300 ${isActive ? "opacity-100" : "opacity-50"}`}>
-                  <div className="mt-0.5 shrink-0 w-3.5 flex justify-center">
-                    {isActive ? (
-                      <Activity size={14} className="animate-pulse text-dash-accent" />
-                    ) : (
-                      <CheckCircle size={14} className="text-emerald-500/60" />
-                    )}
-                  </div>
-                  <span className="text-muted-foreground break-words whitespace-normal leading-relaxed min-w-0 flex-1 font-medium">{step}</span>
-                </div>
-              );
-            })}
-          </div>
-        )}
-        
-        {msg.content.trim() !== "" && (
-          <div className={`chat-bubble chat-bubble-${msg.role}`}>
-            {msg.role === "agent" ? (
-              <AgentMarkdown>{msg.content}</AgentMarkdown>
-            ) : (
-              msg.content
-            )}
-          </div>
-        )}
-      </div>
-      {msg.role === "agent" &&
-        !isLoading &&
-        isLast &&
-        APPROVAL_RE.test(msg.content) && (
-          <div className="chat-approval-bar">
-            <button
-              className="chat-approval-btn chat-approve"
-              onClick={onApprove}
-            >
-              {t("chat.approve")}
-            </button>
-            <button className="chat-approval-btn chat-deny" onClick={onDeny}>
-              {t("chat.deny")}
-            </button>
-          </div>
-        )}
-    </div>
-  );
-});
+import ChatMessageRow from "../../components/ChatMessageRow";
 
 export interface ChatMessage {
   id: string;
@@ -1099,7 +1026,7 @@ function Chat({
         )
       ) : (
           visibleMessages.map((msg, i) => (
-            <MessageRow
+            <ChatMessageRow
               key={msg.id}
               msg={msg}
               isLast={i === visibleMessages.length - 1}

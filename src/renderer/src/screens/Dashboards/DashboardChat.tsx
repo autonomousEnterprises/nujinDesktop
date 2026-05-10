@@ -154,145 +154,7 @@ export { AgentMarkdown };
 const APPROVAL_RE =
   /⚠️.*dangerous|requires? (your )?approval|\/approve.*\/deny|do you want (me )?to (proceed|continue|run|execute)/i;
 
-interface MessageRowProps {
-  msg: ChatMessage;
-  isLast: boolean;
-  isLoading: boolean;
-  onApprove: () => void;
-  onDeny: () => void;
-  isSummarizationResponse?: boolean;
-}
-
-const MessageRow = memo(function MessageRow({
-  msg,
-  isLast,
-  isLoading,
-  onApprove,
-  onDeny,
-  isSummarizationResponse,
-}: MessageRowProps): React.JSX.Element {
-  const { t } = useI18n();
-  const [isCollapsed, setIsCollapsed] = useState(true);
-
-  let isSummarization = false;
-  let summaryTitle = "AI Summarization";
-  let summaryJson = "";
-
-  if (msg.role === "user") {
-    if (msg.metadata?.type === "summarization") {
-      isSummarization = true;
-      summaryTitle = `AI Summarization: ${msg.metadata.title}`;
-      summaryJson = JSON.stringify(msg.metadata.data, null, 2);
-    } else if (msg.content.includes("You are a data analyst.")) {
-      isSummarization = true;
-      const titleMatch = msg.content.match(/\*\*"(.*?)"\*\*/);
-      if (titleMatch) {
-        summaryTitle = `AI Summarization: ${titleMatch[1]}`;
-      }
-      const jsonMatch = msg.content.match(/```json\n([\s\S]*?)\n```/);
-      if (jsonMatch) {
-        summaryJson = jsonMatch[1];
-      }
-    }
-  }
-
-  const isAgentSummarizationResponse = isSummarizationResponse || (msg.role === "agent" && msg.content.includes("```summary"));
-
-  if (isSummarization) {
-    return (
-      <div className="chat-message chat-message-agent">
-        <div className="chat-avatar chat-avatar-agent" style={{ background: "transparent" }}>
-          <Sparkles size={18} className="text-dash-accent" />
-        </div>
-        <div className="chat-bubble chat-bubble-agent" style={{ width: "100%", background: "var(--bg-card)", border: "1px solid var(--border)", opacity: 0.9 }}>
-          <div className="font-semibold mb-2 flex items-center justify-between text-dash-accent">
-            <span className="flex items-center gap-2">
-              {summaryTitle}
-            </span>
-          </div>
-          <div className="text-xs text-muted-foreground mb-3">
-             Asking AI to analyze the underlying data payload...
-          </div>
-          <div 
-            className="cursor-pointer flex items-center gap-1 text-xs text-dash-accent select-none"
-            onClick={() => setIsCollapsed(!isCollapsed)}
-          >
-            {isCollapsed ? <ChevronRight size={12} /> : <ChevronDown size={12} />}
-            {isCollapsed ? "View raw data payload" : "Hide raw data payload"}
-          </div>
-          {!isCollapsed && summaryJson && (
-            <pre className="mt-3 p-2 bg-black/20 rounded overflow-x-auto text-[10px] text-muted-foreground border border-white/5 whitespace-pre-wrap">
-{summaryJson}
-            </pre>
-          )}
-        </div>
-      </div>
-    );
-  }
-
-  return (
-    <div className={`chat-message chat-message-${msg.role}`}>
-      {msg.role === "user" ? (
-        <div className="chat-avatar chat-avatar-user">U</div>
-      ) : isAgentSummarizationResponse ? (
-        <div className="chat-avatar chat-avatar-agent" style={{ background: "transparent" }} />
-      ) : (
-        <HermesAvatar />
-      )}
-      <div className="flex flex-col gap-2 w-full min-w-0">
-        {msg.toolSteps && msg.toolSteps.length > 0 && (
-          <div className="flex flex-col gap-1.5 mb-1 pl-3 border-l-2 border-slate-200 dark:border-slate-800 ml-1">
-            {msg.toolSteps.map((step, i) => {
-              const isLastStep = i === msg.toolSteps!.length - 1;
-              const isActive = isLastStep && isLoading && isLast;
-              return (
-                <div key={i} className={`flex items-start gap-2.5 text-[13px] transition-opacity duration-300 ${isActive ? "opacity-100" : "opacity-50"}`}>
-                  <div className="mt-0.5 shrink-0 w-3.5 flex justify-center">
-                    {isActive ? (
-                      <Activity size={14} className="animate-pulse text-dash-accent" />
-                    ) : (
-                      <CheckCircle size={14} className="text-emerald-500/60" />
-                    )}
-                  </div>
-                  <span className="text-muted-foreground break-words whitespace-normal leading-relaxed min-w-0 flex-1 font-medium">{step}</span>
-                </div>
-              );
-            })}
-          </div>
-        )}
-
-        {(msg.content.trim() !== "" || isAgentSummarizationResponse) && (
-          <div 
-            className={`chat-bubble chat-bubble-${msg.role}`}
-            style={isAgentSummarizationResponse ? { width: "100%", backgroundColor: "transparent", background: "transparent", border: "none", padding: 0, boxShadow: "none" } : undefined}
-          >
-            {msg.role === "agent" ? (
-              <AgentMarkdown>{msg.content}</AgentMarkdown>
-            ) : (
-              msg.content
-            )}
-          </div>
-        )}
-      </div>
-      {msg.role === "agent" &&
-        !isLoading &&
-        isLast &&
-        APPROVAL_RE.test(msg.content) && (
-          <div className="chat-approval-bar">
-            <button
-              className="chat-approval-btn chat-approve"
-              onClick={onApprove}
-            >
-              {t("chat.approve")}
-            </button>
-            <button className="chat-approval-btn chat-deny" onClick={onDeny}>
-              {t("chat.deny")}
-            </button>
-          </div>
-        )}
-    </div>
-  );
-});
+import ChatMessageRow from "../../components/ChatMessageRow";
 
 export interface ChatMessage {
   id: string;
@@ -1190,7 +1052,7 @@ const DashboardChat = memo(forwardRef<DashboardChatHandle, DashboardChatProps>(f
               isSummarizationResp = prevMsg.metadata?.type === "summarization" || prevMsg.content.includes("You are a data analyst.");
             }
             return (
-              <MessageRow
+              <ChatMessageRow
                 key={msg.id}
                 msg={msg}
                 isLast={i === visibleMessages.length - 1}
