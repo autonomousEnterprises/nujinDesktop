@@ -75,6 +75,7 @@ const SmartMessageRenderer = memo(function SmartMessageRenderer({ children }: Sm
     }
   }
 
+
   // Fallback to normal markdown
   return <AgentMarkdown>{children}</AgentMarkdown>;
 });
