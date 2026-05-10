@@ -22,31 +22,26 @@ const LOCAL_API_URL = "http://127.0.0.1:8642";
  * for rich, visually appealing responses in Nujin Desktop.
  */
 const VISUAL_RESPONSE_PROTOCOL = `
-### JSON-FIRST ARCHITECTURE (STRICT)
-1. **START WITH JSON**: Every RICH MODE response MUST start with the \`\`\`json block. 
-   - **NO INTRO**: Do not write "Here is your data..." or "Searching...". Start with the JSON.
-   - **NO TRUNCATION**: By putting JSON first, you ensure the user sees the cockpit even if the rest of the text is long.
-2. **ZERO TOLERANCE FOR HALLUCINATIONS**: 
-   - **COPY-PASTE ONLY**: Every metric, price, and URL MUST be a direct copy from a tool output in THIS turn. 
-   - **NO TRAINING DATA**: Never use training data for current prices (BTC, Oil, etc.).
-3. **MANDATORY ACTIONS**: Suggest 2-3 logical next steps in the "actions" field.
-4. **BLOCK TYPES**:
-   - "metrics": label, value, unit, trend.
-   - "news": title, summary, url (DEEP LINK), source.
-   - "table": For structured comparisons.
-   - "text": ONLY for the final analysis/conclusion (placed after the JSON).
+### MANDATORY COCKPIT PROTOCOL (GOD MODE)
+1. **RESPONSE START**: Start your response IMMEDIATELY with \`\`\`json. 
+   - **NO INTRO**: No "Searching...", no "Here is...". Just the JSON.
+2. **FIDELITY**: COPY-PASTE data and URLs from tool outputs. 
+   - **ZERO HALLUCINATIONS**: Never guess prices, facts or URLs.
+3. **STRUCTURE**: Use "metrics", "news", and "actions".
+4. **ACTIONS**: Suggested actions are MANDATORY.
 
 \`\`\`json
 {
   "visual": {
-    "title": "Dashboard Goal",
-    "subtitle": "Brief context",
+    "title": "Goal Title",
+    "subtitle": "Context",
     "status": "success",
     "blocks": [
-      { "type": "metrics", "items": [{"label": "L", "value": "COPY_PASTE", "unit": "U", "trend": "up"}] }
+      { "type": "metrics", "items": [{"label": "L", "value": "V", "unit": "U", "trend": "up"}] },
+      { "type": "news", "items": [{"title": "T", "summary": "S", "url": "U", "source": "S"}] }
     ],
-    "sources": [{"label": "S", "url": "COPY_PASTE_DEEP_LINK"}],
-    "actions": [{"label": "L", "command": "/c", "displayText": "D"}]
+    "sources": [{"label": "S", "url": "U"}],
+    "actions": [{"label": "Next Step", "command": "/run", "displayText": "Run next"}]
   }
 }
 \`\`\`
@@ -230,7 +225,7 @@ function sendMessageViaApi(
   }
 
   // 3. Add current message with a forceful reminder suffix
-  const reminderSuffix = "\n\n(ULTRA-STRICT: JSON-FIRST ARCHITECTURE. Start your response with the \`\`\`json block. NO INTRO. NO TALK. COPY-PASTE data from tools ONLY. Zero Hallucinations.)";
+  const reminderSuffix = "\n\n(GOD MODE: START WITH JSON. NO INTRO. NO TALK. COPY-PASTE FROM TOOLS ONLY. ZERO HALLUCINATIONS.)";
   messages.push({ role: "user", content: message + reminderSuffix });
 
   const body = JSON.stringify({
