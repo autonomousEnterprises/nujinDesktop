@@ -80,14 +80,14 @@ const STATUS_COLORS = {
   neutral: "text-slate-400 border-white/5 bg-white/[0.01]",
 };
 
-const VisualResponse: React.FC<{ data: VisualData }> = ({ data }) => {
+const VisualResponse: React.FC<{ data: VisualData; hideHeader?: boolean }> = ({ data, hideHeader }) => {
   const Icon = data.icon ? (ICON_MAP[data.icon] || Info) : (data.status === "success" ? CheckCircle : data.status === "error" ? AlertCircle : Info);
   const statusColor = STATUS_COLORS[data.status || "neutral"];
 
   return (
     <div className="visual-response flex flex-col gap-4 w-full max-w-full animate-in fade-in slide-in-from-bottom-2 duration-400 font-sans group/visual">
       {/* Header Section */}
-      {(data.title || data.subtitle) && (
+      {!hideHeader && (data.title || data.subtitle) && (
         <div className={`p-5 rounded-2xl border ${statusColor} flex gap-5 items-start relative overflow-hidden transition-all duration-300 hover:border-white/20`}>
           <div className="shrink-0 w-12 h-12 rounded-2xl flex items-center justify-center border border-current opacity-80 ring-4 ring-current/5">
             <Icon size={24} className="text-current" strokeWidth={2.5} />

@@ -391,19 +391,22 @@ function setupIPC(): void {
             currentChatAbort = null;
             event.sender.send("chat-done", sessionId || "");
             resolveChat({ response: fullResponse, sessionId });
-            // Desktop notification when window is not focused and response took >10s
+            
+            // Notification: Only for complex tasks (took >10s OR used tools OR is JSON response)
+            const isComplex = (Date.now() - chatStartTime > 10000) || fullResponse.includes('"visual":');
             if (
               mainWindow &&
               !mainWindow.isFocused() &&
-              Date.now() - chatStartTime > 10000
+              isComplex
             ) {
               const preview = fullResponse
                 .replace(/[#*_`~\n]+/g, " ")
+                .replace(/\{"visual":.*/, "") // Strip JSON from notification preview
                 .trim()
                 .slice(0, 80);
               new Notification({
-                title: "Hermes Agent",
-                body: preview || "Response ready",
+                title: "Hermes Agent — Task Complete",
+                body: preview || "The agent has finished the requested task.",
               }).show();
             }
           },

@@ -23,21 +23,26 @@ const LOCAL_API_URL = "http://127.0.0.1:8642";
  */
 const VISUAL_RESPONSE_PROTOCOL = `
 ### NUJIN SYSTEM PROTOCOL
-1. **Autonomous Action**: NEVER ask for permission for read-only operations (fetching data, terminal commands). JUST EXECUTE AND SHOW RESULTS.
-3. **Next Steps**: ALWAYS provide 2-3 logical "actions" (suggestions) for the user to continue the conversation or task.
+1. **MANDATORY GROUNDING**: NEVER hallucinate or invent data. If you provide a number (e.g., stock price, KPI, metric), it MUST be backed by a tool execution from the current turn. If you do not have the data, use your tools to get it. DO NOT GUESS.
+2. **Hybrid Response Mode**:
+   - For simple conversational answers (jokes, greetings), write the text normally in **MARKDOWN**.
+   - If you want to provide "Suggested Actions" for a simple answer, append a JSON block at the end.
+   - For complex tasks, data analysis, metrics, or research, respond with the **FULL JSON PROTOCOL**.
+3. **Autonomous Action**: NEVER ask for permission for read-only operations. JUST EXECUTE.
+4. **Valid Sources**: URLs in the "sources" field MUST be valid, public, and accessible without authentication.
 
 {
   "visual": {
     "title": "Result Title",
+    "subtitle": "Brief context",
     "status": "success",
     "blocks": [
-      { "type": "metrics", "items": [{"label": "L", "value": "V", "unit": "%", "trend": "up", "trend_value": "5%"}] },
-      { "type": "list", "items": [{"title": "Item Title", "content": "Details"}] },
-      { "type": "table", "columns": ["C1"], "rows": [["R1"]] },
-      { "type": "text", "content": "Summary" }
+      { "type": "metrics", "items": [{"label": "L", "value": "V", "unit": "%", "trend": "up"}] },
+      { "type": "news", "items": [{"title": "T", "content": "C", "url": "U"}] },
+      { "type": "text", "content": "Detailed summary" }
     ],
-    "sources": [{"label": "Source", "url": "..."}],
-    "actions": [{"label": "Next Task", "command": "/run_next"}]
+    "sources": [{"label": "S", "url": "U"}],
+    "actions": [{"label": "L", "command": "/c"}]
   }
 }
 STRICT: Flat design. No shadows. No glass.
@@ -221,7 +226,7 @@ function sendMessageViaApi(
   }
 
   // 3. Add current message with a forceful reminder suffix
-  const reminderSuffix = "\n\n(Execute now. Use Visual JSON for results. No talk, just do.)";
+  const reminderSuffix = "\n\n(STRICT: NO HALLUCINATIONS. If showing data, it MUST be from a tool output in THIS turn. Use Visual JSON for results. No talk, just do.)";
   messages.push({ role: "user", content: message + reminderSuffix });
 
   const body = JSON.stringify({

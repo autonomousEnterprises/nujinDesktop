@@ -9,28 +9,33 @@ interface SmartMessageRendererProps {
 const SmartMessageRenderer = memo(function SmartMessageRenderer({ children }: SmartMessageRendererProps) {
   const content = children.trim();
   
-  // Try to detect if the response is a JSON visual message
-  // 1. Direct JSON
-  // 2. JSON wrapped in markdown blocks
-  let jsonToParse = content;
+  // Try to find a JSON block in the content
+  // We look for either a direct JSON string or a JSON block inside markdown
+  const jsonMatch = content.match(/(\{[\s\S]*"visual"[\s\S]*\}|\{[\s\S]*"actions"[\s\S]*\})/);
   
-  if (!content.startsWith("{")) {
-    const jsonBlockMatch = content.match(/```(?:json)?\s*(\{[\s\S]*\})\s*```/);
-    if (jsonBlockMatch) {
-      jsonToParse = jsonBlockMatch[1].trim();
-    }
-  }
-
-  if (jsonToParse.startsWith("{") && jsonToParse.endsWith("}")) {
+  if (jsonMatch) {
+    const jsonStr = jsonMatch[0];
+    const textBefore = content.split(jsonStr)[0].trim();
+    
     try {
-      const data = JSON.parse(jsonToParse);
-      // Check if it looks like our VisualResponse schema
-      if (data && (data.visual || data.blocks || data.type === "visual" || data.metrics || data.title || data.rows)) {
-        const visualData = data.visual || data;
-        return <VisualResponse data={visualData} />;
+      const data = JSON.parse(jsonStr);
+      const visualData = data.visual || data;
+
+      // If we have text before the JSON, we render the text normally 
+      // and then the visual components (likely just actions/metrics)
+      if (textBefore) {
+        return (
+          <div className="flex flex-col gap-4">
+            <AgentMarkdown>{textBefore}</AgentMarkdown>
+            <VisualResponse data={visualData} hideHeader={true} />
+          </div>
+        );
       }
+
+      // If no text before, just render the full visual response
+      return <VisualResponse data={visualData} />;
     } catch (e) {
-      // Not valid JSON or not our schema, fall back to markdown
+      // JSON parse failed, fall back
     }
   }
 
