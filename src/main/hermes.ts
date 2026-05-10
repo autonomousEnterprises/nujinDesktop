@@ -22,30 +22,40 @@ const LOCAL_API_URL = "http://127.0.0.1:8642";
  * for rich, visually appealing responses in Nujin Desktop.
  */
 const VISUAL_RESPONSE_PROTOCOL = `
-### NUJIN SYSTEM PROTOCOL
-1. **RESPONSE MODES (STRICT)**:
-   - **RICH MODE (Mandatory for Research)**: If you used ANY tools (search, terminal, curl, etc.) or performed any complex task, you MUST use the full JSON protocol. This provides a professional card-based result.
-   - **DIRECT MODE**: Use PLAIN MARKDOWN only for text-only conversations where NO tools were used.
-   - **HYBRID MODE**: Use markdown text followed by a minimal JSON {"actions": [...]} if you want buttons on a simple answer.
-2. **MANDATORY GROUNDING**: NEVER hallucinate. Use tools for real-time facts.
-3. **Autonomous Action**: JUST EXECUTE.
-4. **Valid Sources**: Verify URLs are public and valid.
+### NUJIN COCKPIT PROTOCOL (STRICT)
+1. **RICH MODE (Mandatory for Research)**:
+   - Use ONLY for tool-backed research. 
+   - **NO MARKDOWN LISTS**: Never use a "text" block for multiple items. Use "news", "metrics", or "table".
+   - **COCKPIT FEEL**: Every response MUST have structured blocks + "actions" for the user to "click through".
+   - **MANDATORY ACTIONS**: Suggest at least 2-3 logical next steps.
+2. **BLOCK TYPES**:
+   - "metrics": For data/numbers.
+   - "news": For headlines. MUST include "title", "summary", "url", and "source".
+   - "table": For comparisons.
+   - "text": ONLY for a brief (1-2 sentence) intro/summary.
+3. **GROUNDING**: Use tools for real-time data. Verify URLs.
 
 {
   "visual": {
-    "title": "Title (RICH MODE)",
+    "title": "Main Goal (e.g. Market Analysis)",
     "subtitle": "Brief context",
     "status": "success",
     "blocks": [
-      { "type": "metrics", "items": [{"label": "L", "value": "V", "unit": "%", "trend": "up"}] },
-      { "type": "news", "items": [{"title": "T", "content": "C", "url": "U", "source": "CNN"}] },
-      { "type": "text", "content": "Summary" }
+      { "type": "metrics", "items": [{"label": "S&P 500", "value": "5,222.68", "unit": "pts", "trend": "up"}] },
+      { 
+        "type": "news", 
+        "items": [
+          { "title": "Headline", "summary": "Short context", "url": "https://...", "source": "Reuters" }
+        ] 
+      }
     ],
-    "sources": [{"label": "S", "url": "U"}],
-    "actions": [{"label": "L", "command": "/c"}]
+    "sources": [{"label": "Reuters", "url": "https://..."}],
+    "actions": [
+      {"label": "Analyze Impact", "command": "/analyze_impact", "displayText": "What's the market impact?"},
+      {"label": "Get Deep Dive", "command": "/deep_dive", "displayText": "Show me a detailed report."}
+    ]
   }
 }
-STRICT: Flat design. No shadows. No glass.
 `;
 
 function getApiUrl(): string {
@@ -226,7 +236,7 @@ function sendMessageViaApi(
   }
 
   // 3. Add current message with a forceful reminder suffix
-  const reminderSuffix = "\n\n(STRICT: If tools were used, you MUST use RICH MODE JSON. Simple answers = Plain Markdown ONLY. No talk.)";
+  const reminderSuffix = "\n\n(STRICT: COCKPIT MODE. No markdown lists. Use structured JSON blocks for all research data. Mandate 'actions' buttons for user interaction. No talk.)";
   messages.push({ role: "user", content: message + reminderSuffix });
 
   const body = JSON.stringify({
